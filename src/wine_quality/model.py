@@ -1,5 +1,5 @@
-# model.py
 import os
+from typing import Any
 
 import joblib
 from sklearn.ensemble import RandomForestClassifier
@@ -11,7 +11,9 @@ from sklearn.metrics import (
 )
 
 
-def train_model(X_train, y_train, n_estimators=200, max_depth=None, random_state=42):
+def train_model(
+    X_train, y_train, n_estimators: int = 200, max_depth: int | None = None, random_state: int = 42
+) -> RandomForestClassifier:
     model = RandomForestClassifier(
         n_estimators=n_estimators,
         max_depth=max_depth,
@@ -22,7 +24,7 @@ def train_model(X_train, y_train, n_estimators=200, max_depth=None, random_state
     return model
 
 
-def evaluate_model(model, X_test, y_test):
+def evaluate_model(model: RandomForestClassifier, X_test, y_test) -> Any:
     y_pred = model.predict(X_test)
     print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
     print(f"F1-score: {f1_score(y_test, y_pred):.4f}")
@@ -33,11 +35,11 @@ def evaluate_model(model, X_test, y_test):
     return y_pred
 
 
-def save_model(model, path="models/wine_rf.pkl"):
+def save_model(model: Any, path: str = "models/wine_rf.pkl") -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     joblib.dump(model, path)
     print(f"Модель сохранена: {path}")
 
 
-def load_model(path="models/wine_rf.pkl"):
+def load_model(path: str = "models/wine_rf.pkl") -> Any:
     return joblib.load(path)
