@@ -1,22 +1,31 @@
-# src/wine_quality/utils.py
+from __future__ import annotations
+
 import matplotlib
 
-matplotlib.use("Agg")  # ← ЭТО ГЛАВНОЕ — отключает Tkinter полностью
+matplotlib.use("Agg")
 import os
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
-# Создаём папку для графиков один раз
-os.makedirs("plots", exist_ok=True)
+from .config import (
+    PLOT_CORR_PATH,
+    PLOT_FEATURES_PATH,
+    PLOT_QUALITY_PATH,
+    PLOTS_DIR,
+)
+
+# create dirs early
+os.makedirs(PLOTS_DIR, exist_ok=True)
 
 
-def plot_quality_distribution(
-    df: pd.DataFrame, save_path: str = "plots/quality_distribution.png"
-) -> None:
+def plot_quality_distribution(df: pd.DataFrame, save_path: str | None = None) -> None:
+    if save_path is None:
+        save_path = str(PLOT_QUALITY_PATH)
     plt.figure(figsize=(8, 5))
-    df["quality"].value_counts().sort_index().plot(kind="bar", color="steelblue")
+    counts = df["quality"].value_counts().sort_index()
+    counts.plot(kind="bar")
     plt.title("Распределение оригинального качества вина")
     plt.xlabel("Оценка")
     plt.ylabel("Количество")
@@ -26,11 +35,12 @@ def plot_quality_distribution(
     print(f"График сохранён: {save_path}")
 
 
-def plot_correlation_heatmap(
-    df: pd.DataFrame, save_path: str = "plots/correlation_heatmap.png"
-) -> None:
+def plot_correlation_heatmap(df: pd.DataFrame, save_path: str | None = None) -> None:
+    if save_path is None:
+        save_path = str(PLOT_CORR_PATH)
     plt.figure(figsize=(12, 9))
-    sns.heatmap(df.corr(), annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5)
+    corr = df.corr()
+    sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", linewidths=0.5)
     plt.title("Матрица корреляций")
     plt.tight_layout()
     plt.savefig(save_path)
@@ -38,16 +48,21 @@ def plot_correlation_heatmap(
     print(f"График сохранён: {save_path}")
 
 
-def plot_feature_importances(
-    model, feature_names: list[str], save_path: str = "plots/feature_importances.png"
-) -> None:
+def plot_feature_importances(model, feature_names: list[str], save_path: str | None = None) -> None:
+    if save_path is None:
+        save_path = str(PLOT_FEATURES_PATH)
+
+    if not hasattr(model, "feature_importances_"):
+        raise AttributeError("model does not have attribute 'feature_importances_'")
+
     importances = model.feature_importances_
     indices = importances.argsort()[::-1]
+    ordered_names = [feature_names[i] for i in indices]
 
     plt.figure(figsize=(10, 6))
     plt.title("Важность признаков (Random Forest)")
     plt.bar(range(len(importances)), importances[indices], align="center")
-    plt.xticks(range(len(importances)), [feature_names[i] for i in indices], rotation=90)
+    plt.xticks(range(len(importances)), ordered_names, rotation=90)
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()

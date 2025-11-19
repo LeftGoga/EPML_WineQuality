@@ -9,8 +9,8 @@ run train:
 	poetry run python -m wine_quality
 
 format:
-	poetry run black src
-	poetry run isort src
+	poetry run ruff format src
+	poetry run ruff check --select I --fix src
 
 lint:
 	-poetry run ruff check src

@@ -1,4 +1,3 @@
-# main.py
 from .data import create_target, get_features_and_target, load_data, split_data
 from .features import engineer_features, scale_features
 from .model import evaluate_model, save_model, train_model
