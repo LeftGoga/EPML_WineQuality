@@ -221,16 +221,13 @@ COPY . .
 
 CMD ["python", "-m", "wine_quality"]
 ```
-
-
-
+- Настроен .dockerignore
 ---
 
 ## 4. Работа с Git
 
-- Создан репозиторий с ветками для ДЗ
+- Создан репозиторий с ветками для ДЗ(protected master и features/hw, мердж через PR)
 - Настроен .gitignore (базовый python template)
-
 ---
 
 ## 5. Подготовлен отчет

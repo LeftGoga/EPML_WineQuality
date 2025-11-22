@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Final
 
-BASE_DIR: Final[Path] = Path(__file__).parent
+BASE_DIR: Final[Path] = Path(__file__).parent.parent.parent
 
 DATA_URL: Final[str] = (
     "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"

@@ -15,7 +15,6 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     Можно расширять дальше по потребностям.
     """
     df = df.copy()
-    # guard for missing columns
     cols = set(df.columns)
     if {"fixed_acidity", "volatile_acidity"}.issubset(cols):
         df["total_acidity"] = df["fixed_acidity"] + df["volatile_acidity"]
@@ -23,8 +22,6 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
         df["density_per_alcohol"] = df["density"] / (df["alcohol"] + 1e-6)
     if {"sulfates", "chlorides"}.issubset(cols):
         df["sulfates_to_chlorides"] = df["sulfates"] / (df["chlorides"] + 1e-6)
-
-    # you may drop or cap outliers here if needed
     return df
 
 
