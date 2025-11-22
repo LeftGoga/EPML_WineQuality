@@ -21,7 +21,6 @@ pip-log.txt
 *.png
 *.jpg
 
-plots/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -121,10 +120,8 @@ secrets.yaml
 # =========================
 # Project Specific
 # =========================
-models/
 tmp/
 cache/
 saved/
 artifacts/
-plots/
 .pyc
