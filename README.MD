@@ -4,23 +4,22 @@
 Проект для анализа и моделирования качества вина (Wine Quality dataset).
 
 ## Структура
-- `data/` — raw и processed
-- `notebooks/` — Jupyter ноутбуки
-- `src/wine_quality/` — исходники
-- `tests/` — тесты
+-src/data.py - загрузка данных
+-src/config.py - конфигурация экспериментов
+-src/features.py - генерацией фичей
+-src/models.py - обучение и оценка омделей
+-src/utils.py - работа с графиками
 
 ## Быстрый старт
 1. Сгенерировать проект:
-cookiecutter /path/to/cookiecutter_template
+cookiecutter https://github.com/LeftGoga/EPML_DS_COOCKIECUTTER.git
 
 
 2. Установить зависимости (Poetry):
-cd EPML-wine-quality
-poetry install
-poetry shell
+make install
 
-3. Запустить ноутбук:
-make notebook
+3. Запустить Обучение:
+make run
 
 
 Автор: Egor Polyakov — leftgoga@gmail.com

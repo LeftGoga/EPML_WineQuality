@@ -3,7 +3,7 @@
 all: install run
 
 install:
-	poetry install --with dev
+	poetry install
 
 run train:
 	poetry run python -m wine_quality
