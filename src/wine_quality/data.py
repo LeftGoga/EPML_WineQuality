@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
@@ -39,9 +41,17 @@ def get_features_and_target(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     return X, y
 
 
-def split_data(X, y, test_size: float | None = None, random_state: int | None = None):
+def split_data(
+    X: pd.DataFrame,
+    y: pd.Series,
+    test_size: float | None = None,
+    random_state: int | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
     if test_size is None:
         test_size = TEST_SIZE
     if random_state is None:
         random_state = RANDOM_STATE
-    return train_test_split(X, y, test_size=test_size, random_state=random_state, stratify=y)
+    return cast(
+        tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series],
+        train_test_split(X, y, test_size=test_size, random_state=random_state, stratify=y),
+    )

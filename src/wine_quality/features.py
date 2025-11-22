@@ -28,7 +28,9 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def scale_features(X_train: pd.DataFrame, X_test: pd.DataFrame):
+def scale_features(
+    X_train: pd.DataFrame, X_test: pd.DataFrame
+) -> tuple[pd.DataFrame, pd.DataFrame, StandardScaler]:
     """
     Масштабирует признаки StandardScaler'ом, возвращает:
       X_train_scaled (DataFrame), X_test_scaled (DataFrame), scaler (fitted StandardScaler)

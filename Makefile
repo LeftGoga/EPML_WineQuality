@@ -13,8 +13,8 @@ format:
 	poetry run ruff check --select I --fix src
 
 lint:
-	-poetry run ruff check src
-	-poetry run mypy src
+	-poetry run ruff check src/wine_quality
+	-poetry run mypy src/wine_quality
 
 clean:
 ifeq ($(OS),Windows_NT)

@@ -8,13 +8,9 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from sklearn.ensemble import RandomForestClassifier
 
-from .config import (
-    PLOT_CORR_PATH,
-    PLOT_FEATURES_PATH,
-    PLOT_QUALITY_PATH,
-    PLOTS_DIR,
-)
+from .config import PLOT_CORR_PATH, PLOT_FEATURES_PATH, PLOT_QUALITY_PATH, PLOTS_DIR
 
 # create dirs early
 os.makedirs(PLOTS_DIR, exist_ok=True)
@@ -48,7 +44,11 @@ def plot_correlation_heatmap(df: pd.DataFrame, save_path: str | None = None) -> 
     print(f"График сохранён: {save_path}")
 
 
-def plot_feature_importances(model, feature_names: list[str], save_path: str | None = None) -> None:
+def plot_feature_importances(
+    model: RandomForestClassifier,
+    feature_names: list[str],
+    save_path: str | None = None,
+) -> None:
     if save_path is None:
         save_path = str(PLOT_FEATURES_PATH)
 

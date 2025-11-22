@@ -4,6 +4,7 @@ import os
 from typing import Any
 
 import joblib
+import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 
@@ -11,8 +12,8 @@ from .config import MAX_DEPTH, MODEL_PATH, N_ESTIMATORS, RANDOM_STATE
 
 
 def train_model(
-    X_train,
-    y_train,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
     n_estimators: int | None = None,
     max_depth: int | None = None,
     random_state: int | None = None,
@@ -38,7 +39,9 @@ def train_model(
     return model
 
 
-def evaluate_model(model: RandomForestClassifier, X_test, y_test) -> dict[str, Any]:
+def evaluate_model(
+    model: RandomForestClassifier, X_test: pd.DataFrame, y_test: pd.Series
+) -> dict[str, Any]:
     """
     Оценивает модель на X_test/y_test, печатает и возвращает словарь метрик.
     """
