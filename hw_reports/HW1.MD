@@ -16,52 +16,6 @@
 ```
 2.
 а) Добавил в pyproject.toml настройки для линтеров(взял из интернета наиболее профессиональные, но отключил слишком душные требования для тестового проекта)
-б) Создал хуки для коммитов с линтерами и фиксами( Ruff, mypy как наиболее полные и дополняюющие друг друга)
-В) Добавил в окружение Ruff как форматер
-г) Создал makefile для удобства
-д) Создал config.py и env для конфигураций
-
-**MakeFile**:
-```
-.PHONY: all install run train lint format clean reinstall
-
-all: install run
-
-install:
-	poetry install --with dev
-
-run train:
-	poetry run python -m wine_quality
-
-format:
-	poetry run ruff format src
-	poetry run ruff check --select I --fix src
-
-lint:
-	-poetry run ruff check src
-	-poetry run mypy src
-
-clean:
-ifeq ($(OS),Windows_NT)
-	@if exist models (rmdir /s /q models)
-	@if exist plots (rmdir /s /q plots)
-	@if exist .pytest_cache (rmdir /s /q .pytest_cache)
-	@if exist .mypy_cache (rmdir /s /q .mypy_cache)
-	@if exist .ruff_cache (rmdir /s /q .ruff_cache)
-	del /s /q *.pyc 2>NUL
-	for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
-	@echo "Очистка завершена"
-else
-	rm -rf models/ plots/ __pycache__/ .pytest_cache/ .mypy_cache/ .ruff_cache/
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	@echo "Очистка завершена"
-endif
-reinstall:
-	poetry env remove --all
-	poetry install --with dev
-
-```
 
 **Настройки Линтеров и Форматеров**:
 mypy:
@@ -111,6 +65,78 @@ indent-style = "space"
 combine-as-imports = true
 known-first-party = ["wine_quality"]
 ```
+
+б) Создал хуки для коммитов с линтерами и фиксами( Ruff, mypy как наиболее полные и дополняюющие друг друга)
+```
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+```
+
+В) Добавил в окружение Ruff как форматер
+г) Создал makefile для удобства
+**MakeFile**:
+```
+.PHONY: all install run train lint format clean reinstall
+
+all: install run
+
+install:
+	poetry install --with dev
+
+run train:
+	poetry run python -m wine_quality
+
+format:
+	poetry run ruff format src
+	poetry run ruff check --select I --fix src
+
+lint:
+	-poetry run ruff check src
+	-poetry run mypy src
+
+clean:
+ifeq ($(OS),Windows_NT)
+	@if exist models (rmdir /s /q models)
+	@if exist plots (rmdir /s /q plots)
+	@if exist .pytest_cache (rmdir /s /q .pytest_cache)
+	@if exist .mypy_cache (rmdir /s /q .mypy_cache)
+	@if exist .ruff_cache (rmdir /s /q .ruff_cache)
+	del /s /q *.pyc 2>NUL
+	for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
+	@echo "Очистка завершена"
+else
+	rm -rf models/ plots/ __pycache__/ .pytest_cache/ .mypy_cache/ .ruff_cache/
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	@echo "Очистка завершена"
+endif
+reinstall:
+	poetry env remove --all
+	poetry install --with dev
+
+```
+
+д) Создал config.py и env для конфигураций
+
+
+
+
 
 
 3.

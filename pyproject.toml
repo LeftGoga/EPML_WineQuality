@@ -1,22 +1,23 @@
-[project]
-name = "wine-quality"
+[tool.poetry]
+name = "wine_quality"
 version = "0.1.0"
 description = ""
-authors = [
-    {name = "Egor Polyakov",email = "leftgoga@yandex.ru"}
-]
+authors = ["Egor Polyakov <leftgoga@yandex.ru>"]
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = [
-    "pre-commit (>=4.4.0,<5.0.0)",
-    "pandas (>=2.3.3,<3.0.0)",
-    "scikit-learn (>=1.7.2,<2.0.0)",
-    "matplotlib (>=3.10.7,<4.0.0)",
-    "seaborn (>=0.13.2,<0.14.0)",
-    "joblib (>=1.5.2,<2.0.0)"
+packages = [
+    { include = "wine_quality", from = "src" }
 ]
+[tool.poetry.dependencies]
+python = ">=3.12"
+pre-commit = ">=4.4.0,<5.0.0"
+pandas = ">=2.3.3,<3.0.0"
+scikit-learn = ">=1.7.2,<2.0.0"
+matplotlib = ">=3.10.7,<4.0.0"
+seaborn = ">=0.13.2,<0.14.0"
+joblib = ">=1.5.2,<2.0.0"
+streamlit = "^1.51.0"
+bandit = "^1.9.1"
 
-[tool.poetry]
 [tool.mypy]
 python_version = "3.13"
 warn_unused_configs = true
@@ -33,7 +34,6 @@ ignore_missing_imports = true
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
-
 
 [tool.ruff]
 line-length = 100
@@ -57,8 +57,8 @@ ignore = [
   "PLR0913",
   "PLR2004",
   "RUF001",
-   "RUF002",
-   "RUF003"
+  "RUF002",
+  "RUF003"
 ]
 
 [tool.ruff.format]
