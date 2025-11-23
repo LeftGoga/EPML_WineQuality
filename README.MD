@@ -21,6 +21,11 @@ make install
 3. Запустить Обучение:
 make run
 
-4. Запустить в докере
+4. Запустить стримлит
+make streamlit
+
+5. Запустить в докере
+docker compose up --build
+
 
 Автор: Egor Polyakov — leftgoga@gmail.com

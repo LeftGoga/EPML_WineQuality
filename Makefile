@@ -8,6 +8,9 @@ install:
 run train:
 	poetry run python src/wine_quality/__main__.py
 
+streamlit:
+	poetry run streamlit run src/wine_quality/app.py
+
 format:
 	poetry run ruff format src
 	poetry run ruff check --select I --fix src
