@@ -21,5 +21,6 @@ make install
 3. Запустить Обучение:
 make run
 
+4. Запустить в докере
 
 Автор: Egor Polyakov — leftgoga@gmail.com

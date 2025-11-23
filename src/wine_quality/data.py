@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import cast
 
 import pandas as pd
+from config import DATA_URL, RANDOM_STATE, TEST_SIZE
 from sklearn.model_selection import train_test_split
-
-from .config import DATA_URL, RANDOM_STATE, TEST_SIZE
 
 
 def load_data(url: str | None = None) -> pd.DataFrame:

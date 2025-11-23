@@ -1,7 +1,8 @@
-from .data import create_target, get_features_and_target, load_data, split_data
-from .features import engineer_features, scale_features
-from .model import evaluate_model, save_model, train_model
-from .utils import plot_correlation_heatmap, plot_feature_importances, plot_quality_distribution
+from features import engineer_features, scale_features
+from model import evaluate_model, save_model, train_model
+from utils import plot_correlation_heatmap, plot_feature_importances, plot_quality_distribution
+
+from data import create_target, get_features_and_target, load_data, split_data
 
 if __name__ == "__main__":
     df = load_data()

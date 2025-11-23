@@ -5,10 +5,9 @@ from typing import Any
 
 import joblib
 import pandas as pd
+from config import MAX_DEPTH, MODEL_PATH, N_ESTIMATORS, RANDOM_STATE
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
-
-from .config import MAX_DEPTH, MODEL_PATH, N_ESTIMATORS, RANDOM_STATE
 
 
 def train_model(

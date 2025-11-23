@@ -8,9 +8,8 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from config import PLOT_CORR_PATH, PLOT_FEATURES_PATH, PLOT_QUALITY_PATH, PLOTS_DIR
 from sklearn.ensemble import RandomForestClassifier
-
-from .config import PLOT_CORR_PATH, PLOT_FEATURES_PATH, PLOT_QUALITY_PATH, PLOTS_DIR
 
 # create dirs early
 os.makedirs(PLOTS_DIR, exist_ok=True)

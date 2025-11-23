@@ -6,7 +6,7 @@ install:
 	poetry install
 
 run train:
-	poetry run python -m wine_quality
+	poetry run python src/wine_quality/__main__.py
 
 format:
 	poetry run ruff format src
