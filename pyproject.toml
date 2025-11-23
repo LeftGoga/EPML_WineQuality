@@ -7,6 +7,7 @@ readme = "README.md"
 packages = [
     { include = "wine_quality", from = "src" }
 ]
+
 [tool.poetry.dependencies]
 python = ">=3.12"
 pre-commit = ">=4.4.0,<5.0.0"
@@ -68,3 +69,17 @@ indent-style = "space"
 [tool.ruff.lint.isort]
 combine-as-imports = true
 known-first-party = ["wine_quality"]
+
+[tool.bandit]
+exclude = [
+    ".venv",
+    "venv",
+    "env",
+    "tests",
+    "__pycache__",
+    "build"
+]
+skips = [
+    "B101",
+    "B311",
+]

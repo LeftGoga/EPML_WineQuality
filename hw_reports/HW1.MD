@@ -56,7 +56,7 @@ https://github.com/LeftGoga/EPML_DS_COOCKIECUTTER.git
 
 ## 2. Настройка линтеров и форматеров
 
-### a) Добавлены настройки в pyproject.toml
+### a) Добавлены конфиги линтеров/форматеров в pyproject.toml и отдельные конфиг-файлы(на всякий случай)
 
 #### mypy
 ```
@@ -107,8 +107,27 @@ combine-as-imports = true
 known-first-party = ["wine_quality"]
 ```
 
+###
+```
+
+exclude = [
+    ".venv",
+    "venv",
+    "env",
+    "tests",
+    "__pycache__",
+    "build",
+    "dist",
+    "migrations",
+]
+
+skips = [
+    "B101",
+    "B311",
+]
 
 
+```
 ---
 
 ### b) Созданы pre-commit хуки (Ruff, mypy, Bandit, автофиксы)
@@ -138,10 +157,27 @@ repos:
       - id: bandit
         files: ^src/wine_quality/
 
-
+```
+###bandit
 ```
 
+exclude = [
+    ".venv",
+    "venv",
+    "env",
+    "tests",
+    "__pycache__",
+    "build",
+    "dist",
+    "migrations",
+]
 
+skips = [
+    "B101",
+    "B311",
+]
+
+```
 ### c) Добавлен Ruff как форматер(заменяет black и isortб при этом быстрее работает)
 ### d) Создан Makefile
 ```
@@ -185,9 +221,6 @@ poetry env remove --all
 poetry install --with dev
 
 ```
-
-
-### e) Созданы config.py и .env для конфигураций
 
 ---
 

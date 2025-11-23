@@ -1,4 +1,4 @@
-.PHONY: all install run train lint format clean reinstall
+.PHONY: all install run train lint format bandit clean reinstall
 
 all: install run
 
@@ -11,11 +11,12 @@ run train:
 format:
 	poetry run ruff format src
 	poetry run ruff check --select I --fix src
+	poetry run bandit -r src/wine_quality
+
 
 lint:
-	-poetry run ruff check src/wine_quality
-	-poetry run mypy src/wine_quality
-
+	poetry run ruff check src/wine_quality
+	poetry run mypy src/wine_quality
 clean:
 ifeq ($(OS),Windows_NT)
 	@if exist models (rmdir /s /q models)
@@ -32,6 +33,7 @@ else
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	@echo "Очистка завершена"
 endif
+
 reinstall:
 	poetry env remove --all
 	poetry install --with dev
