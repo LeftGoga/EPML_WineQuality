@@ -25,7 +25,7 @@ make run
 make streamlit
 
 5. Запустить в докере
-docker compose up --build
+docker compose up --build -> open localhost:8501
 
 
 Автор: Egor Polyakov — leftgoga@gmail.com
