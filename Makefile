@@ -6,7 +6,7 @@ install:
 	poetry install
 
 run train:
-	poetry run python src/wine_quality/__main__.py
+	poetry run python src/wine_quality/main.py
 
 streamlit:
 	poetry run streamlit run src/wine_quality/app.py
