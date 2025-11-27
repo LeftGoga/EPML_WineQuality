@@ -257,7 +257,7 @@ CMD ["streamlit", "run", "src/wine_quality/app.py", "--server.port=8501", "--ser
 
 ## 4. Работа с Git
 
-- Создан репозиторий с ветками для ДЗ(protected master и features/hw, мердж через PR)
+- Создан репозиторий с ветками для ДЗ(protected master(проверенный код) и features/hw(фичи здесь будут отдельны дз, не думаю что требуется стратегия сложнее), мердж через PR)
 - Настроен .gitignore (базовый python template)
 ---
 
