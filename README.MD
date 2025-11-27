@@ -27,7 +27,12 @@ make streamlit
 5. Запустить в докере
 docker compose up --build -> open localhost:8501
 
-6. Версии пакетов
+6. Версии пакетов и программ
+Poetry 2.1.4
+mypy 1.18.2
+ruff 0.14.5
+docker 27.2.0
+pre-commit 4.4.0
 ```
 python = ">=3.12"
 pre-commit = ">=4.4.0,<5.0.0"
