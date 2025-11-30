@@ -10,6 +10,8 @@ __pycache__/
 *.egg-info/
 .eggs/
 
+
+.dvc*
 # Virtual environments
 .venv/
 venv/
