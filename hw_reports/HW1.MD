@@ -50,7 +50,7 @@ https://github.com/LeftGoga/EPML_DS_COOCKIECUTTER.git
             .gitkeep
 
 ```
-
+![alt text](../pics/cookiecuuter_example.png)
 
 ---
 
@@ -180,6 +180,7 @@ skips = [
 ```
 
 ![alt text](../pics/pre-commit.png)
+![alt text](../pics/poetry_install.png)
 
 ### c) Добавлен Ruff как форматер(заменяет black и isort при этом быстрее работает)
 ### d) Создан Makefile
