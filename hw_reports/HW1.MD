@@ -236,6 +236,10 @@ poetry install --with dev
 
 
 ### Dockerfile
+Создан докерфайл
+
+![alt text](../pics/docker_run.png)
+```
 FROM python:3.13-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -260,7 +264,6 @@ CMD ["streamlit", "run", "src/wine_quality/app.py", "--server.port=8501", "--ser
 - Настроен .dockerignore
 - Написан docker-compose, поднимающий streamlit-приложение
 
-![alt text](../pics/docker_run.png)
 
 ---
 
@@ -274,6 +277,7 @@ CMD ["streamlit", "run", "src/wine_quality/app.py", "--server.port=8501", "--ser
  ![alt text](../pics/githubflows.png)
 - Настроен .gitignore (базовый python template)
 ---
+
 
 ## 5. Подготовлен отчет
 Настоящий документ является финальным отчетом.
