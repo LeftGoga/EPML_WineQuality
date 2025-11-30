@@ -11,7 +11,7 @@ __pycache__/
 .eggs/
 
 
-.dvc*
+.dvcignore
 # Virtual environments
 .venv/
 venv/
