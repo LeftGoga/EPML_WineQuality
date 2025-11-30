@@ -178,7 +178,10 @@ skips = [
 ]
 
 ```
-### c) Добавлен Ruff как форматер(заменяет black и isortб при этом быстрее работает)
+
+![alt text](../pics/pre-commit.png)
+
+### c) Добавлен Ruff как форматер(заменяет black и isort при этом быстрее работает)
 ### d) Создан Makefile
 ```
 .PHONY: all install run train lint format clean reinstall
@@ -227,7 +230,9 @@ poetry install --with dev
 ## 3. Настройка окружения и Docker
 
 Настроен Poetry с зависимостями.
-Создан requirements.txt через pip freeze.
+
+![alt text](../pics/hw1_env_info.png)
+
 
 ### Dockerfile
 FROM python:3.13-slim
@@ -253,11 +258,19 @@ CMD ["streamlit", "run", "src/wine_quality/app.py", "--server.port=8501", "--ser
 ```
 - Настроен .dockerignore
 - Написан docker-compose, поднимающий streamlit-приложение
+
+![alt text](../pics/docker_run.png)
+
 ---
 
 ## 4. Работа с Git
 
-- Создан репозиторий с ветками для ДЗ(protected master(проверенный код) и features/hw(фичи здесь будут отдельны дз, не думаю что требуется стратегия сложнее), мердж через PR)
+- Создан репозиторий с ветками для ДЗ. Стратегия ветвления github flows:
+    --master - защищенная ветка, в которой находится проверенный рабочий код
+    --features/hw* - ветки фичей, который в данном случае будут представлять собой домашнии работы
+    -- Мердж в мастер через пуллреквесты
+
+ ![alt text](../pics/githubflows.png)
 - Настроен .gitignore (базовый python template)
 ---
 
