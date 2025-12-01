@@ -275,7 +275,14 @@ CMD ["streamlit", "run", "src/wine_quality/app.py", "--server.port=8501", "--ser
 
     --features/hw* - ветки фичей, который в данном случае будут представлять собой домашнии работы
 
-    -- Мердж в мастер через пуллреквесты
+
+Процесс работы c git:
+    -- Создание ветки features/hw*
+    -- работа над домашней работой в ветке
+    -- пуш ветки
+    -- открытие пулл реквеста
+    -- мердж в master
+
 
  ![alt text](../pics/githubflows.png)
 - Настроен .gitignore (базовый python template)
