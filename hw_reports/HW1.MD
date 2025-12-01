@@ -277,10 +277,15 @@ CMD ["streamlit", "run", "src/wine_quality/app.py", "--server.port=8501", "--ser
 
 
 Процесс работы c git:
+
     -- Создание ветки features/hw*
+
     -- работа над домашней работой в ветке
+
     -- пуш ветки
+
     -- открытие пулл реквеста
+
     -- мердж в master
 
 
