@@ -5,6 +5,9 @@ all: install run
 install:
 	poetry install
 
+prepare:
+	poetry run python src/wine_quality/data.py
+
 run train:
 	poetry run python src/wine_quality/main.py
 

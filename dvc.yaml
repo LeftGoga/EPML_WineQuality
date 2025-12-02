@@ -1,0 +1,13 @@
+stages:
+  prepare:
+    cmd: make prepare
+    outs:
+      - data
+
+  train:
+    cmd: make train
+    deps:
+      - src/wine_quality/main.py
+      - data
+    outs:
+      - models

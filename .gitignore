@@ -125,5 +125,3 @@ cache/
 saved/
 artifacts/
 .pyc
-/data
-/models

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import urllib.request
 from typing import cast
 
 import pandas as pd
-from config import DATA_URL, RANDOM_STATE, TEST_SIZE
+from config import BASE_DIR, DATA_URL, RANDOM_STATE, TEST_SIZE
 from sklearn.model_selection import train_test_split
 
 
@@ -11,10 +12,21 @@ def load_data(url: str | None = None) -> pd.DataFrame:
     """
     Загружает датасет вина (red wine) из DATA_URL (по умолчанию)
     Возвращает DataFrame c колонками, где пробелы заменены на '_'.
+    Если url is None, данные загружаются в папку data/ в корне проекта, если файл отсутствует.
     """
-    if url is None:
-        url = DATA_URL
-    df = pd.read_csv(url, sep=";")
+    data_dir = BASE_DIR / "data"
+    data_dir.mkdir(exist_ok=True)
+    local_path = data_dir / "winequality-red.csv"
+
+    if url is not None:
+        # Загрузка из указанного URL без сохранения локально
+        df = pd.read_csv(url, sep=";")
+    else:
+        # Использование дефолтного URL: скачать в data/, если не существует, затем загрузить
+        if not local_path.exists():
+            urllib.request.urlretrieve(DATA_URL, local_path)  # nosec B310
+        df = pd.read_csv(local_path, sep=";")
+
     df.columns = df.columns.str.replace(" ", "_")
     return df
 
@@ -54,3 +66,7 @@ def split_data(
         tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series],
         train_test_split(X, y, test_size=test_size, random_state=random_state, stratify=y),
     )
+
+
+if __name__ == "__main__":
+    load_data()
