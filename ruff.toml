@@ -1,0 +1,32 @@
+# === Global settings ===
+line-length = 100
+
+[lint]
+select = [
+    "E", "W", "F",
+    "I",
+    "B",
+    "C4",
+    "UP",
+    "ARG",
+    "PIE",
+    "PL",
+    "RUF",
+]
+ignore = [
+    "E501",
+    "B008",
+    "PLR0913",
+    "PLR2004",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+
+[lint.isort]
+combine-as-imports = true
+known-first-party = ["wine_quality"]
