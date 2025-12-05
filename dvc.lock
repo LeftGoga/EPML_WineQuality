@@ -1,0 +1,28 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: make prepare
+    outs:
+    - path: data
+      hash: md5
+      md5: f1c1b2e69091b72538a1cf7cde3fbb70.dir
+      size: 84199
+      nfiles: 1
+  train:
+    cmd: make train
+    deps:
+    - path: data
+      hash: md5
+      md5: f1c1b2e69091b72538a1cf7cde3fbb70.dir
+      size: 84199
+      nfiles: 1
+    - path: src/wine_quality/main.py
+      hash: md5
+      md5: 1be1357e611c845c83d38923d1099f56
+      size: 905
+    outs:
+    - path: models
+      hash: md5
+      md5: 9d4ad6f505585db111c41019e70cecb1.dir
+      size: 5191801
+      nfiles: 1
