@@ -9,5 +9,3 @@ stages:
     deps:
       - src/wine_quality/main.py
       - data
-    outs:
-      - models

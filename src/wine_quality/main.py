@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
     # Определяем имя эксперимента и модели
     model_type = ModelType(args.model_type)
-    experiment_name = args.experiment_name or "wine_quality"
+    experiment_name = args.experiment_name or f"wine_{model_type.value}"
     register_model_name = args.register_model_name or f"Wine{model_type.value.title()}"
 
     res = run_experiment(

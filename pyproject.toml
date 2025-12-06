@@ -19,6 +19,7 @@ joblib = ">=1.5.2,<2.0.0"
 streamlit = "^1.51.0"
 bandit = "^1.9.1"
 mlflow = "^3.6.0"
+dvc = "^3.64.0"
 
 [tool.mypy]
 python_version = "3.13"

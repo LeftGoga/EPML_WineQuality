@@ -22,3 +22,13 @@ repos:
     hooks:
       - id: bandit
         files: ^src/wine_quality/
+
+  - repo: local
+    hooks:
+      - id: dvc-auto-commit
+        name: DVC auto-commit
+        entry: bash -c 'dvc_status=$(dvc status 2>&1); if echo "$dvc_status" | grep -q "changed"; then echo "Обнаружены изменения в данных DVC. Создание новой версии..."; dvc commit -f; echo "Версия DVC создана автоматически."; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [post-commit]
