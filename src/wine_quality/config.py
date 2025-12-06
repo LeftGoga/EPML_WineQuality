@@ -20,5 +20,16 @@ MODEL_PATH: Final[Path] = MODELS_DIR / "wine_rf.pkl"
 # ML defaults
 TEST_SIZE: Final[float] = 0.2
 RANDOM_STATE: Final[int] = 42
-N_ESTIMATORS: Final[int] = 200
-MAX_DEPTH: Final[int | None] = None
+
+# RandomForest defaults
+RF_N_ESTIMATORS: Final[int] = 200
+RF_MAX_DEPTH: Final[int | None] = None
+
+# Boosting defaults
+BOOSTING_N_ESTIMATORS: Final[int] = 100
+BOOSTING_MAX_DEPTH: Final[int] = 3
+BOOSTING_LEARNING_RATE: Final[float] = 0.1
+
+# MLP defaults
+MLP_HIDDEN_LAYER_SIZES: Final[tuple[int, ...]] = (100, 50)
+MLP_MAX_ITER: Final[int] = 500

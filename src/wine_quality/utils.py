@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 from config import PLOT_CORR_PATH, PLOT_FEATURES_PATH, PLOT_QUALITY_PATH, PLOTS_DIR
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 
 # create dirs early
 os.makedirs(PLOTS_DIR, exist_ok=True)
@@ -44,12 +45,17 @@ def plot_correlation_heatmap(df: pd.DataFrame, save_path: str | None = None) -> 
 
 
 def plot_feature_importances(
-    model: RandomForestClassifier,
+    model: RandomForestClassifier | GradientBoostingClassifier | MLPClassifier,
     feature_names: list[str],
     save_path: str | None = None,
 ) -> None:
     if save_path is None:
         save_path = str(PLOT_FEATURES_PATH)
+
+    # MLP не имеет feature_importances_, пропускаем визуализацию
+    if isinstance(model, MLPClassifier):
+        print("MLPClassifier не поддерживает feature_importances_, пропускаем визуализацию")
+        return
 
     if not hasattr(model, "feature_importances_"):
         raise AttributeError("model does not have attribute 'feature_importances_'")
@@ -58,8 +64,11 @@ def plot_feature_importances(
     indices = importances.argsort()[::-1]
     ordered_names = [feature_names[i] for i in indices]
 
+    model_type = (
+        "Random Forest" if isinstance(model, RandomForestClassifier) else "Gradient Boosting"
+    )
     plt.figure(figsize=(10, 6))
-    plt.title("Важность признаков (Random Forest)")
+    plt.title(f"Важность признаков ({model_type})")
     plt.bar(range(len(importances)), importances[indices], align="center")
     plt.xticks(range(len(importances)), ordered_names, rotation=90)
     plt.tight_layout()

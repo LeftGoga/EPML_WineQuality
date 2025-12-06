@@ -8,19 +8,10 @@ install:
 prepare:
 	poetry run python src/wine_quality/data.py
 
-run train:
+run:
 	poetry run python src/wine_quality/main.py
 
-train-boosting:
-	poetry run python src/wine_quality/main.py --model-type boosting
-
-train-rf:
-	poetry run python src/wine_quality/main.py --model-type random_forest
-
-train-mlp:
-	poetry run python src/wine_quality/main.py --model-type mlp
-
-train-custom:
+train:
 	poetry run python src/wine_quality/main.py $(ARGS)
 
 streamlit:
@@ -56,5 +47,5 @@ reinstall:
 	poetry env remove --all
 	poetry install --with dev
 
-mlflow: 
+mlflow:
 	mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./artifacts --host 127.0.0.1 --port 5000

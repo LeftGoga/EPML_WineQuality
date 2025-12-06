@@ -1,32 +1,32 @@
 # model.py
-"""
-Модуль для тренировки/оценки/логирования RandomForestClassifier с аккуратной интеграцией MLflow.
-Ключевые идеи:
-- Используем `registered_model_name` при логировании, чтобы избежать двойной регистрации.
-- Предлагаем совместимый вызов log_model (поддержка deprecated artifact_path -> name).
-- Добавляем сигнатуру модели (если возможно) и input_example, чтобы удалить предупреждение.
-"""
+"""Модуль для тренировки/оценки/логирования различных моделей с интеграцией MLflow."""
 
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any
+from enum import Enum
+from typing import Any
 
 import joblib
 import mlflow
 import pandas as pd
-from config import MAX_DEPTH, MODEL_PATH, N_ESTIMATORS, RANDOM_STATE
-from mlflow.tracking import MlflowClient
-from mlflow_registry import (
-    log_metadata,
-    register_model_from_run,
-    set_model_version_tags,
-    transition_model_stage,
+from config import (
+    BOOSTING_LEARNING_RATE,
+    BOOSTING_MAX_DEPTH,
+    BOOSTING_N_ESTIMATORS,
+    MLP_HIDDEN_LAYER_SIZES,
+    MLP_MAX_ITER,
+    MODEL_PATH,
+    RANDOM_STATE,
+    RF_MAX_DEPTH,
+    RF_N_ESTIMATORS,
 )
-from sklearn.ensemble import RandomForestClassifier
+from mlflow.tracking import MlflowClient
+from mlflow_registry import log_metadata, set_model_version_tags, transition_model_stage
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
+from sklearn.neural_network import MLPClassifier
 
-# Optional MLflow integration flag
 try:
     import mlflow.sklearn
     from mlflow.models.signature import infer_signature
@@ -34,38 +34,67 @@ try:
     MLFLOW_AVAILABLE = True
 except Exception:
     MLFLOW_AVAILABLE = False
-    if TYPE_CHECKING:
-        from mlflow.models.signature import infer_signature
-    else:
-        infer_signature = None
+    infer_signature = None
+
+
+class ModelType(str, Enum):
+    """Типы поддерживаемых моделей."""
+
+    RANDOM_FOREST = "random_forest"
+    BOOSTING = "boosting"
+    MLP = "mlp"
 
 
 def train_model(
+    model_type: str | ModelType,
     X_train: pd.DataFrame,
     y_train: pd.Series,
-    n_estimators: int | None = None,
-    max_depth: int | None = None,
+    rf_n_estimators: int | None = None,
+    rf_max_depth: int | None = None,
+    boosting_n_estimators: int | None = None,
+    boosting_max_depth: int | None = None,
+    boosting_learning_rate: float | None = None,
+    mlp_hidden_layer_sizes: tuple[int, ...] | None = None,
+    mlp_max_iter: int | None = None,
     random_state: int | None = None,
-) -> RandomForestClassifier:
-    if n_estimators is None:
-        n_estimators = N_ESTIMATORS
-    if max_depth is None:
-        max_depth = MAX_DEPTH
-    if random_state is None:
-        random_state = RANDOM_STATE
+) -> RandomForestClassifier | GradientBoostingClassifier | MLPClassifier:
+    """Обучает модель указанного типа."""
+    if isinstance(model_type, str):
+        model_type = ModelType(model_type.lower())
 
-    model = RandomForestClassifier(
-        n_estimators=n_estimators,
-        max_depth=max_depth,
-        random_state=random_state,
-        n_jobs=-1,
-    )
+    random_state = random_state or RANDOM_STATE
+
+    if model_type == ModelType.RANDOM_FOREST:
+        model = RandomForestClassifier(
+            n_estimators=rf_n_estimators or RF_N_ESTIMATORS,
+            max_depth=rf_max_depth or RF_MAX_DEPTH,
+            random_state=random_state,
+            n_jobs=-1,
+        )
+    elif model_type == ModelType.BOOSTING:
+        model = GradientBoostingClassifier(
+            n_estimators=boosting_n_estimators or BOOSTING_N_ESTIMATORS,
+            max_depth=boosting_max_depth or BOOSTING_MAX_DEPTH,
+            learning_rate=boosting_learning_rate or BOOSTING_LEARNING_RATE,
+            random_state=random_state,
+        )
+    elif model_type == ModelType.MLP:
+        model = MLPClassifier(
+            hidden_layer_sizes=mlp_hidden_layer_sizes or MLP_HIDDEN_LAYER_SIZES,
+            max_iter=mlp_max_iter or MLP_MAX_ITER,
+            random_state=random_state,
+        )
+    else:
+        raise ValueError(f"Неизвестный тип модели: {model_type}")
+
     model.fit(X_train, y_train)
     return model
 
 
 def evaluate_model(
-    model: RandomForestClassifier, X_test: pd.DataFrame, y_test: pd.Series
+    model: RandomForestClassifier | GradientBoostingClassifier | MLPClassifier,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
 ) -> dict[str, Any]:
     y_pred = model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
@@ -100,62 +129,19 @@ def load_model(path: str | None = None) -> Any:
     return joblib.load(path)
 
 
-def _log_model_compat(
-    sk_model: Any,
-    artifact_path: str,
-    registered_model_name: str | None = None,
-    X_sample: pd.DataFrame | None = None,
-) -> str | None:
-    """Совместимый вызов логирования модели, учитывающий предупреждение о artifact_path.
-    Попытается infer_signature и передать signature/input_example.
-    """
-    kwargs = {}
-    # Попытка infer_signature
-    if infer_signature is not None and X_sample is not None:
-        try:
-            signature = infer_signature(X_sample, sk_model.predict(X_sample))
-            kwargs["signature"] = signature
-        except Exception as exc:
-            # Игнорируем ошибки при создании сигнатуры - это не критично
-            print(f"Warning: could not infer signature: {exc}")
-
-    # Некоторые версии mlflow ожидают name вместо artifact_path. Попробуем оба безопасно.
-    # Сначала пробуем вызвать с name, если есть поддержка
-    used = None
-    try:
-        # mlflow.sklearn.log_model может принимать 'name' вместо 'artifact_path' в новых версиях
-        if registered_model_name is not None:
-            mlflow.sklearn.log_model(
-                sk_model=sk_model,
-                name=artifact_path,
-                registered_model_name=registered_model_name,
-                **kwargs,
-            )
-        else:
-            mlflow.sklearn.log_model(sk_model=sk_model, name=artifact_path, **kwargs)
-        used = "name"
-    except TypeError:
-        # fallback на artifact_path
-        if registered_model_name is not None:
-            mlflow.sklearn.log_model(
-                sk_model=sk_model,
-                artifact_path=artifact_path,
-                registered_model_name=registered_model_name,
-                **kwargs,
-            )
-        else:
-            mlflow.sklearn.log_model(sk_model=sk_model, artifact_path=artifact_path, **kwargs)
-        used = "artifact_path"
-    return used
-
-
 def run_experiment(
     X_train: pd.DataFrame,
     y_train: pd.Series,
     X_test: pd.DataFrame,
     y_test: pd.Series,
-    n_estimators: int = 100,
-    max_depth: int | None = None,
+    model_type: str | ModelType = ModelType.BOOSTING,
+    rf_n_estimators: int | None = None,
+    rf_max_depth: int | None = None,
+    boosting_n_estimators: int | None = None,
+    boosting_max_depth: int | None = None,
+    boosting_learning_rate: float | None = None,
+    mlp_hidden_layer_sizes: tuple[int, ...] | None = None,
+    mlp_max_iter: int | None = None,
     random_state: int | None = None,
     use_mlflow: bool = True,
     experiment_name: str | None = None,
@@ -163,68 +149,94 @@ def run_experiment(
     save_local: bool = True,
     register_model_name: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Запускает тренировку, оценку и логгирование.
-
-    Ключевой момент: не смешиваем два способа регистрации.
-    Если передан `register_model_name`, используем `mlflow.sklearn.log_model(..., registered_model_name=...)`.
-    Не вызываем ручную register_model_from_run, чтобы не получить дубликаты `models:/...`.
-    """
+    """Запускает тренировку, оценку и логгирование."""
     if use_mlflow and not MLFLOW_AVAILABLE:
-        raise RuntimeError(
-            "MLflow не установлен или доступен. Установите mlflow: pip install mlflow"
-        )
+        raise RuntimeError("MLflow не установлен. Установите mlflow: pip install mlflow")
+
+    if isinstance(model_type, str):
+        model_type = ModelType(model_type.lower())
 
     model = train_model(
-        X_train, y_train, n_estimators=n_estimators, max_depth=max_depth, random_state=random_state
+        model_type=model_type,
+        X_train=X_train,
+        y_train=y_train,
+        rf_n_estimators=rf_n_estimators,
+        rf_max_depth=rf_max_depth,
+        boosting_n_estimators=boosting_n_estimators,
+        boosting_max_depth=boosting_max_depth,
+        boosting_learning_rate=boosting_learning_rate,
+        mlp_hidden_layer_sizes=mlp_hidden_layer_sizes,
+        mlp_max_iter=mlp_max_iter,
+        random_state=random_state,
     )
 
     metrics = evaluate_model(model, X_test, y_test)
-
     mlflow_run_id = None
 
     if use_mlflow and MLFLOW_AVAILABLE:
-        if experiment_name:
-            mlflow.set_experiment(experiment_name)
+        mlflow.set_experiment(experiment_name or "wine_quality")
 
         with mlflow.start_run() as run:
             mlflow_run_id = run.info.run_id
 
-            params = {
-                "n_estimators": model.n_estimators,
-                "max_depth": model.max_depth,
-                "random_state": model.random_state,
+            # Логируем параметры
+            params: dict[str, Any] = {
+                "model_type": model_type.value,
+                "random_state": random_state or RANDOM_STATE,
             }
-            mlflow.log_params(params)
+            if model_type == ModelType.RANDOM_FOREST:
+                params.update(
+                    {"rf_n_estimators": model.n_estimators, "rf_max_depth": model.max_depth}
+                )
+            elif model_type == ModelType.BOOSTING:
+                params.update(
+                    {
+                        "boosting_n_estimators": model.n_estimators,
+                        "boosting_max_depth": model.max_depth,
+                        "boosting_learning_rate": model.learning_rate,
+                    }
+                )
+            elif model_type == ModelType.MLP:
+                params.update(
+                    {
+                        "mlp_hidden_layer_sizes": str(model.hidden_layer_sizes),
+                        "mlp_max_iter": model.max_iter,
+                    }
+                )
 
+            mlflow.log_params(params)
             mlflow.log_metric("accuracy", float(metrics["accuracy"]))
             mlflow.log_metric("f1_weighted", float(metrics["f1"]))
 
-            # Логируем модель. Если указан register_model_name — используем registered_model_name
-            _log_model_compat(
+            # Логируем модель
+            kwargs = {}
+            if infer_signature and X_train is not None:
+                try:
+                    kwargs["signature"] = infer_signature(X_train, model.predict(X_train))
+                except Exception as exc:
+                    # Сигнатура не критична, продолжаем без неё
+                    print(f"Warning: could not infer signature: {exc}")
+
+            mlflow.sklearn.log_model(
                 sk_model=model,
                 artifact_path=model_artifact_path,
                 registered_model_name=register_model_name,
-                X_sample=X_train,
+                **kwargs,
             )
 
-            model_uri = f"runs:/{run.info.run_id}/{model_artifact_path}"
-            mlflow.log_param("model_uri", model_uri)
+            log_metadata(
+                {
+                    "feature_columns": list(X_train.columns)
+                    if hasattr(X_train, "columns")
+                    else None,
+                    "n_train": len(X_train),
+                    "n_test": len(X_test),
+                }
+            )
 
-            # Логируем metadata
-            metadata = {
-                "feature_columns": X_train.columns.tolist()
-                if hasattr(X_train, "columns")
-                else None,
-                "n_train": len(X_train),
-                "n_test": len(X_test),
-            }
-            log_metadata(metadata)
-
-            # Если register_model_name указан, mlflow.sklearn.log_model уже создал версию в Registry
+            # Устанавливаем теги и переводим в Staging
             if register_model_name:
                 client = MlflowClient()
-                # найти версии, связанные с этим run и artifact (без создания новых)
                 versions = [
                     v
                     for v in client.get_latest_versions(
@@ -233,30 +245,16 @@ def run_experiment(
                     if v.run_id == run.info.run_id
                 ]
                 if versions:
-                    # обычно это одна версия — берём первую
                     version = str(versions[0].version)
                     tags = {
                         "accuracy": float(metrics["accuracy"]),
                         "f1_weighted": float(metrics["f1"]),
-                        "n_estimators": model.n_estimators,
+                        "model_type": model_type.value,
                     }
+                    if hasattr(model, "n_estimators"):
+                        tags["n_estimators"] = model.n_estimators
                     set_model_version_tags(register_model_name, version, tags)
-                    # Переводим в Staging
                     transition_model_stage(register_model_name, version, "Staging")
-                else:
-                    # На удивление версия не найдена — можно создать вручную (редкий кейс)
-                    try:
-                        created_version = register_model_from_run(
-                            run.info.run_id, model_artifact_path, register_model_name
-                        )
-                        set_model_version_tags(
-                            register_model_name,
-                            created_version,
-                            {"accuracy": float(metrics["accuracy"])},
-                        )
-                        transition_model_stage(register_model_name, created_version, "Staging")
-                    except Exception as exc:
-                        print("Warning: could not find or create model version in registry:", exc)
 
     if save_local:
         save_model(model)
