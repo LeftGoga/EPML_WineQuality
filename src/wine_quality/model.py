@@ -1,6 +1,3 @@
-# model.py
-"""Модуль для тренировки/оценки/логирования различных моделей с интеграцией MLflow."""
-
 from __future__ import annotations
 
 import os

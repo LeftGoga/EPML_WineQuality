@@ -1,11 +1,3 @@
-# mlflow_registry.py
-"""
-Улучшенная реализация для работы с MLflow Model Registry.
-- Избегает создания дубликатов типов `models:/m-...` при обычной регистрации через `log_model(..., registered_model_name=...)`.
-- Предоставляет надёжный create_model_version с polling до READY.
-- Предоставляет функцию для безопасной очистки дублирующих версий (dry-run).
-"""
-
 from __future__ import annotations
 
 import json
