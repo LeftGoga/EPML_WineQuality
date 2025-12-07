@@ -53,17 +53,14 @@ def register_model_from_run(
         mv = client.create_model_version(name=model_name, source=model_uri, run_id=run_id)
     except MlflowException as e:
         err = str(e)
-        # Если RegisteredModel не существует, создаём и повторяем
+
         if "RESOURCE_DOES_NOT_EXIST" in err or "does not exist" in err or "Registered model" in err:
             try:
                 client.create_registered_model(model_name)
             except MlflowException:
-                # возможно, модель создалась параллельно — игнорируем
                 pass
             mv = client.create_model_version(name=model_name, source=model_uri, run_id=run_id)
         else:
-            # Не делаем mlflow.register_model (он создаёт models:/... ссылки).
-            # Поднимем исключение, чтобы вызывающий код мог выбрать fallback-сценарий.
             raise
 
     version = str(mv.version)
@@ -89,7 +86,6 @@ def transition_model_stage(
     Переводит указанную версию в stage. Обёртка над MlflowClient.
     """
     client = MlflowClient()
-    # Note: transition_model_version_stage может быть deprecated в будущих версиях.
     client.transition_model_version_stage(
         name=model_name,
         version=version,
@@ -173,7 +169,6 @@ def cleanup_duplicate_versions(model_name: str, dry_run: bool = True) -> list[di
         model_name, stages=["None", "Staging", "Production", "Archived"]
     )
 
-    # сгруппируем по run_id
     by_run: dict[str, list[ModelVersion]] = {}
     for v in versions:
         by_run.setdefault(v.run_id, []).append(v)
@@ -181,11 +176,10 @@ def cleanup_duplicate_versions(model_name: str, dry_run: bool = True) -> list[di
     for _run_id, items in by_run.items():
         if len(items) <= 1:
             continue
-        # если есть runs:/ и models:/ — удаляем models:/
+
         runs_versions = [v for v in items if v.source and v.source.startswith("runs:/")]
         models_versions = [v for v in items if v.source and v.source.startswith("models:/")]
         if runs_versions and models_versions:
-            # удаляем models_versions
             for mv in models_versions:
                 actions.append({"version": mv.version, "action": "delete_models_source"})
                 if not dry_run:

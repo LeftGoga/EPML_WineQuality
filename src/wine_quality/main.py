@@ -1,4 +1,3 @@
-# main.py
 import argparse
 
 import mlflow
@@ -19,7 +18,6 @@ def parse_args() -> argparse.Namespace:
         choices=["random_forest", "boosting", "mlp"],
         help="Тип модели для обучения (по умолчанию: boosting)",
     )
-    # RandomForest параметры
     parser.add_argument(
         "--rf-n-estimators",
         type=int,
@@ -32,7 +30,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Максимальная глубина для RandomForest",
     )
-    # Boosting параметры
     parser.add_argument(
         "--boosting-n-estimators",
         type=int,
@@ -51,7 +48,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Скорость обучения для Boosting",
     )
-    # MLP параметры
     parser.add_argument(
         "--mlp-hidden-layer-sizes",
         type=str,
@@ -64,7 +60,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Максимальное количество итераций для MLP",
     )
-    # Общие параметры
     parser.add_argument(
         "--random-state",
         type=int,
@@ -111,14 +106,12 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = split_data(X, y)
     X_train_sc, X_test_sc, scaler = scale_features(X_train, X_test)
 
-    # Парсим размеры скрытых слоев для MLP
     mlp_hidden_layer_sizes = None
     if args.mlp_hidden_layer_sizes:
         mlp_hidden_layer_sizes = tuple(
             int(x.strip()) for x in args.mlp_hidden_layer_sizes.split(",")
         )
 
-    # Определяем имя эксперимента и модели
     model_type = ModelType(args.model_type)
     experiment_name = args.experiment_name or f"wine_{model_type.value}"
     register_model_name = args.register_model_name or f"Wine{model_type.value.title()}"
@@ -143,41 +136,9 @@ if __name__ == "__main__":
         save_local=not args.no_save,
         register_model_name=register_model_name,
     )
-    from mlflow.tracking import MlflowClient
-
-    client = MlflowClient()  # Uses the tracking URI you've set
-    try:
-        # List all registered models
-        registered_models = client.search_registered_models()
-        print("All registered models:")
-        for model in registered_models:
-            print(f"- {model.name}")
-
-        # Specifically search for versions of 'WineRF'
-        versions = client.search_model_versions("name='WineRF'")
-        print("Versions for WineRF:")
-        for v in versions:
-            print(
-                f"Version: {v.version}, Stage: {v.current_stage}, Run ID: {v.run_id}, Source: {v.source}, Status: {v.status}"
-            )
-
-        if not versions:
-            print("No versions found for WineRF—model not registered or registry query failed.")
-    except Exception as e:
-        print("Error querying registry:", str(e))
 
     model = res["model"]
     metrics = res["metrics"]
-    mlflow_run_id = res.get("mlflow_run_id")
-    if mlflow_run_id:
-        print(f"MLflow run id: {mlflow_run_id}")
-        # если хотите — можно напечатать ссылку (при локальном tracking server URL в MLFLOW_TRACKING_URI)
-        try:
-            tracking_uri = mlflow.get_tracking_uri()
-            print(f"MLflow tracking URI: {tracking_uri}")
-        except Exception as exc:
-            # Игнорируем ошибки при получении tracking URI - это не критично
-            print(f"Warning: could not get tracking URI: {exc}")
 
     # Визуализации — как раньше
     plot_correlation_heatmap(df.drop(columns=["quality", "good_quality"]))

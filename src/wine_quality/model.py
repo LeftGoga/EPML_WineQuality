@@ -176,7 +176,6 @@ def run_experiment(
         with mlflow.start_run() as run:
             mlflow_run_id = run.info.run_id
 
-            # Логируем параметры
             params: dict[str, Any] = {
                 "model_type": model_type.value,
                 "random_state": random_state or RANDOM_STATE,
@@ -205,13 +204,11 @@ def run_experiment(
             mlflow.log_metric("accuracy", float(metrics["accuracy"]))
             mlflow.log_metric("f1_weighted", float(metrics["f1"]))
 
-            # Логируем модель
             kwargs = {}
             if infer_signature and X_train is not None:
                 try:
                     kwargs["signature"] = infer_signature(X_train, model.predict(X_train))
                 except Exception as exc:
-                    # Сигнатура не критична, продолжаем без неё
                     print(f"Warning: could not infer signature: {exc}")
 
             mlflow.sklearn.log_model(
@@ -231,7 +228,6 @@ def run_experiment(
                 }
             )
 
-            # Устанавливаем теги и переводим в Staging
             if register_model_name:
                 client = MlflowClient()
                 versions = [

@@ -6,7 +6,6 @@ from typing import cast
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-# Используем try/except для поддержки как абсолютных, так и относительных импортов
 try:
     from .config import BASE_DIR, DATA_URL, RANDOM_STATE, TEST_SIZE
     from .features import engineer_features
@@ -26,10 +25,8 @@ def load_data(url: str | None = None) -> pd.DataFrame:
     local_path = data_dir / "winequality-red.csv"
 
     if url is not None:
-        # Загрузка из указанного URL без сохранения локально
         df = pd.read_csv(url, sep=";")
     else:
-        # Использование дефолтного URL: скачать в data/, если не существует, затем загрузить
         if not local_path.exists():
             urllib.request.urlretrieve(DATA_URL, local_path)  # nosec B310
         df = pd.read_csv(local_path, sep=";")
@@ -92,16 +89,12 @@ def save_features(output_path: str | None = None) -> pd.DataFrame:
     if output_path is None:
         output_path = str(data_dir / "features.csv")
 
-    # Загружаем данные
     df = load_data()
 
-    # Создаем целевую переменную
     df = create_target(df)
 
-    # Применяем feature engineering
     df = engineer_features(df)
 
-    # Сохраняем фичи (включая целевую переменную для удобства)
     df.to_csv(output_path, index=False)
     print(f"Фичи сохранены в {output_path}")
 

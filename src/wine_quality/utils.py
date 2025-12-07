@@ -12,7 +12,6 @@ from config import PLOT_CORR_PATH, PLOT_FEATURES_PATH, PLOT_QUALITY_PATH, PLOTS_
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 
-# create dirs early
 os.makedirs(PLOTS_DIR, exist_ok=True)
 
 
@@ -51,8 +50,6 @@ def plot_feature_importances(
 ) -> None:
     if save_path is None:
         save_path = str(PLOT_FEATURES_PATH)
-
-    # MLP не имеет feature_importances_, пропускаем визуализацию
     if isinstance(model, MLPClassifier):
         print("MLPClassifier не поддерживает feature_importances_, пропускаем визуализацию")
         return
