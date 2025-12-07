@@ -55,20 +55,26 @@ def log_params(func: F) -> F:
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
 
-        # Логируем параметры
-        params = {}
-        for param_name, param_value in bound_args.arguments.items():
-            # Пропускаем self для методов
-            if param_name == "self":
-                continue
-            # Конвертируем значения в строки для MLflow
-            if isinstance(param_value, (list, tuple, dict)):
-                params[param_name] = str(param_value)
-            else:
-                params[param_name] = str(param_value)
+        # Логируем параметры только если есть активный MLflow run
+        try:
+            active_run = mlflow.active_run()
+            if active_run is not None:
+                params = {}
+                for param_name, param_value in bound_args.arguments.items():
+                    # Пропускаем self для методов
+                    if param_name == "self":
+                        continue
+                    # Конвертируем значения в строки для MLflow
+                    if isinstance(param_value, (list, tuple, dict)):
+                        params[param_name] = str(param_value)
+                    else:
+                        params[param_name] = str(param_value)
 
-        if params:
-            mlflow.log_params(params)
+                if params:
+                    mlflow.log_params(params)
+        except Exception:  # nosec B110
+            # Игнорируем ошибки, если MLflow не настроен или нет активного run
+            pass
 
         return func(*args, **kwargs)
 
@@ -97,24 +103,29 @@ def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
 
-            # Если результат - словарь, логируем метрики
-            if isinstance(result, dict):
-                metrics_to_log = {}
-                if metric_names:
-                    # Логируем только указанные метрики
-                    for metric_name in metric_names:
-                        if metric_name in result:
-                            value = result[metric_name]
-                            if isinstance(value, (int, float)):
-                                metrics_to_log[metric_name] = float(value)
-                else:
-                    # Логируем все числовые значения из словаря
-                    for key, value in result.items():
-                        if isinstance(value, (int, float)) and not isinstance(value, bool):
-                            metrics_to_log[key] = float(value)
+            # Если результат - словарь, логируем метрики только если есть активный MLflow run
+            try:
+                active_run = mlflow.active_run()
+                if active_run is not None and isinstance(result, dict):
+                    metrics_to_log = {}
+                    if metric_names:
+                        # Логируем только указанные метрики
+                        for metric_name in metric_names:
+                            if metric_name in result:
+                                value = result[metric_name]
+                                if isinstance(value, (int, float)):
+                                    metrics_to_log[metric_name] = float(value)
+                    else:
+                        # Логируем все числовые значения из словаря
+                        for key, value in result.items():
+                            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                                metrics_to_log[key] = float(value)
 
-                if metrics_to_log:
-                    mlflow.log_metrics(metrics_to_log)
+                    if metrics_to_log:
+                        mlflow.log_metrics(metrics_to_log)
+            except Exception:  # nosec B110
+                # Игнорируем ошибки, если MLflow не настроен или нет активного run
+                pass
 
             return result
 
@@ -140,12 +151,22 @@ def log_execution_time(func: F) -> F:
         try:
             result = func(*args, **kwargs)
             execution_time = time.time() - start_time
-            mlflow.log_metric("execution_time_seconds", execution_time)
+            try:
+                active_run = mlflow.active_run()
+                if active_run is not None:
+                    mlflow.log_metric("execution_time_seconds", execution_time)
+            except Exception:  # nosec B110
+                pass
             return result
         except Exception as e:
             execution_time = time.time() - start_time
-            mlflow.log_metric("execution_time_seconds", execution_time)
-            mlflow.log_param("error", str(e))
+            try:
+                active_run = mlflow.active_run()
+                if active_run is not None:
+                    mlflow.log_metric("execution_time_seconds", execution_time)
+                    mlflow.log_param("error", str(e))
+            except Exception:  # nosec B110
+                pass
             raise
 
     return wrapper  # type: ignore[return-value]

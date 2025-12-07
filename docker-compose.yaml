@@ -22,7 +22,9 @@ services:
 
   # MLflow Tracking Server
   mlflow:
-    image: ghcr.io/mlflow/mlflow:v2.14.1
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
     container_name: mlflow_server
     command: >
       mlflow server
@@ -30,10 +32,12 @@ services:
       --default-artifact-root /mlflow/artifacts
       --host 0.0.0.0
       --port 5000
+      --app-name basic-auth
     ports:
       - "5000:5000"
     volumes:
       - mlflow_artifacts:/mlflow/artifacts
+      - ./basic_auth.ini:/mlflow/basic_auth.ini  # Добавьте volume для конфига
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,6 +45,14 @@ services:
     environment:
       - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow@postgres:5432/mlflow
       - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+      - MLFLOW_FLASK_SERVER_SECRET_KEY=your_super_secret_key  # Обязательно! Генерируйте сильный ключ (например, python -c "import secrets; print(secrets.token_hex(32))")
+      - MLFLOW_AUTH_CONFIG_PATH=/mlflow/basic_auth.ini  # Путь к конфигу внутри контейнера
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   wine-app:
     build:
@@ -54,9 +66,13 @@ services:
       - C:/dvc-storage:/dvc-storage
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_USERNAME=admin  # Или ваш username
+      - MLFLOW_TRACKING_PASSWORD=123  # Пароль от админа
     depends_on:
-      - mlflow
+      mlflow:
+        condition: service_healthy
     restart: unless-stopped
+
 
 volumes:
   mlflow_postgres_data:

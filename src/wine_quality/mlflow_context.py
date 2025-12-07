@@ -11,6 +11,7 @@ import os
 import platform
 import sys
 import tempfile
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
@@ -83,19 +84,78 @@ class MLflowExperimentContext:
         # Создаём или получаем эксперимент
         if self.create_if_not_exists:
             try:
-                experiment_id = mlflow.create_experiment(self.experiment_name, tags=self.tags)
-            except Exception:
-                # Эксперимент уже существует
-                experiment = mlflow.get_experiment_by_name(self.experiment_name)
-                if experiment:
-                    experiment_id = experiment.experiment_id
-                    # Обновляем теги, если они предоставлены
-                    if self.tags:
+                # Сначала проверяем, существует ли эксперимент (включая удаленные)
+                client = MlflowClient()
+                try:
+                    experiment = mlflow.get_experiment_by_name(self.experiment_name)
+                    if experiment:
+                        # Эксперимент существует и не удален
+                        experiment_id = experiment.experiment_id
+                        # Обновляем теги, если они предоставлены
+                        if self.tags:
+                            for key, value in self.tags.items():
+                                client.set_experiment_tag(experiment_id, key, value)
+                    else:
+                        # Эксперимент не существует, создаем новый
+                        experiment_id = mlflow.create_experiment(
+                            self.experiment_name, tags=self.tags
+                        )
+                except Exception:
+                    # Если get_experiment_by_name не работает, пробуем создать
+                    experiment_id = mlflow.create_experiment(self.experiment_name, tags=self.tags)
+            except Exception as e:
+                # Эксперимент уже существует или был удален
+                error_msg = str(e)
+                if "deleted" in error_msg.lower():
+                    # Пытаемся восстановить удаленный эксперимент
+                    try:
                         client = MlflowClient()
-                        for key, value in self.tags.items():
-                            client.set_experiment_tag(experiment_id, key, value)
+                        # Получаем ID удаленного эксперимента
+                        experiments = client.search_experiments(
+                            view_type=3  # ALL (включая удаленные)
+                        )
+                        deleted_exp = None
+                        for exp in experiments:
+                            if (
+                                exp.name == self.experiment_name
+                                and exp.lifecycle_stage == "deleted"
+                            ):
+                                deleted_exp = exp
+                                break
+
+                        if deleted_exp:
+                            # Восстанавливаем эксперимент
+                            client.restore_experiment(deleted_exp.experiment_id)
+                            experiment_id = deleted_exp.experiment_id
+                            print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
+                        else:
+                            # Создаем новый с другим именем
+                            new_name = f"{self.experiment_name}_{int(time.time())}"
+                            experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
+                            print(
+                                f"Создан новый эксперимент '{new_name}' (старый '{self.experiment_name}' был удален)"
+                            )
+                            self.experiment_name = new_name
+                    except Exception:
+                        # Если не удалось восстановить, создаем новый
+                        new_name = f"{self.experiment_name}_{int(time.time())}"
+                        experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
+                        print(
+                            f"Создан новый эксперимент '{new_name}' (не удалось восстановить '{self.experiment_name}')"
+                        )
+                        self.experiment_name = new_name
                 else:
-                    raise
+                    # Эксперимент уже существует (не удален)
+                    experiment = mlflow.get_experiment_by_name(self.experiment_name)
+                    if experiment:
+                        experiment_id = experiment.experiment_id
+                        # Обновляем теги, если они предоставлены
+                        if self.tags:
+                            client = MlflowClient()
+                            for key, value in self.tags.items():
+                                client.set_experiment_tag(experiment_id, key, value)
+                    else:
+                        raise
         else:
             experiment = mlflow.get_experiment_by_name(self.experiment_name)
             if not experiment:
@@ -254,8 +314,14 @@ def mlflow_model_context(
                     signature=signature,
                     input_example=input_example,
                 )
+                if registered_model_name:
+                    print(f"Модель {registered_model_name} успешно зарегистрирована в MLflow")
             except Exception as e:
                 print(f"Ошибка при логировании sklearn модели: {e}")
+                if registered_model_name:
+                    print(
+                        f"Предупреждение: модель {registered_model_name} не была зарегистрирована из-за ошибки"
+                    )
         elif "pytorch" in model_type or "torch" in model_type:
             try:
                 mlflow.pytorch.log_model(

@@ -107,7 +107,8 @@ def set_model_version_tags(model_name: str, version: str, tags: dict[str, Any]) 
 
 def list_model_versions(model_name: str) -> list[ModelVersion]:
     client = MlflowClient()
-    versions = client.get_latest_versions(name=model_name)
+    # Используем search_model_versions вместо deprecated get_latest_versions
+    versions = client.search_model_versions(f"name='{model_name}'")
     return cast(list[ModelVersion], versions)
 
 
@@ -141,16 +142,17 @@ def find_duplicate_versions(model_name: str) -> list[dict[str, Any]]:
     """
     client = MlflowClient()
     duplicates = []
-    versions = client.get_latest_versions(
-        model_name, stages=["None", "Staging", "Production", "Archived"]
-    )
+    # Используем search_model_versions вместо deprecated get_latest_versions
+    versions = client.search_model_versions(f"name='{model_name}'")
     by_run: dict[str, list[dict[str, Any]]] = {}
     for v in versions:
         entry = {
             "version": v.version,
             "run_id": v.run_id,
             "source": v.source,
-            "stage": v.current_stage,
+            "stage": getattr(
+                v, "current_stage", "None"
+            ),  # current_stage может отсутствовать в новых версиях
         }
         by_run.setdefault(v.run_id, []).append(entry)
 
@@ -169,9 +171,8 @@ def cleanup_duplicate_versions(model_name: str, dry_run: bool = True) -> list[di
     """
     client = MlflowClient()
     actions = []
-    versions = client.get_latest_versions(
-        model_name, stages=["None", "Staging", "Production", "Archived"]
-    )
+    # Используем search_model_versions вместо deprecated get_latest_versions
+    versions = client.search_model_versions(f"name='{model_name}'")
 
     # сгруппируем по run_id
     by_run: dict[str, list[ModelVersion]] = {}

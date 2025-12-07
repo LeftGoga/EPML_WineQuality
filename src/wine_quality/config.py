@@ -33,3 +33,6 @@ BOOSTING_LEARNING_RATE: Final[float] = 0.1
 # MLP defaults
 MLP_HIDDEN_LAYER_SIZES: Final[tuple[int, ...]] = (100, 50)
 MLP_MAX_ITER: Final[int] = 500
+
+# MLflow defaults
+MLFLOW_EXPERIMENT_NAME: Final[str] = "wine_quality_experiments"

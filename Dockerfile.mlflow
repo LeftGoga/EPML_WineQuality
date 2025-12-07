@@ -1,0 +1,10 @@
+FROM ghcr.io/mlflow/mlflow:v3.7.0
+
+# Устанавливаем psycopg2-binary для работы с PostgreSQL, curl для healthcheck
+# и зависимости для аутентификации
+RUN pip install --no-cache-dir psycopg2-binary flask-wtf && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install mlflow[auth]

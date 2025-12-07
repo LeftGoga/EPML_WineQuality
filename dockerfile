@@ -4,6 +4,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
     git \
+    libpq-dev \
+    postgresql-client \
  && rm -rf /var/lib/apt/lists/*
 
 ENV POETRY_VERSION=1.8.3

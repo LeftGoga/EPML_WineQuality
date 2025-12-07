@@ -1,3 +1,5 @@
+import os
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -7,6 +9,7 @@ from config import (
     BOOSTING_MAX_DEPTH,
     BOOSTING_N_ESTIMATORS,
     DATA_URL,
+    MLFLOW_EXPERIMENT_NAME,
     MLP_HIDDEN_LAYER_SIZES,
     MLP_MAX_ITER,
     RF_MAX_DEPTH,
@@ -14,11 +17,30 @@ from config import (
     TEST_SIZE,
 )
 from features import engineer_features, scale_features
-from model import ModelType, evaluate_model, save_model, train_model
+from mlflow_context import MLflowTrackingContext
+from model import ModelType, run_experiment
 from sklearn.metrics import classification_report
 from sklearn.preprocessing import StandardScaler
 
 from data import create_target, get_features_and_target, load_data, split_data
+
+# Настройка MLflow при запуске приложения
+if "mlflow_initialized" not in st.session_state:
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
+    username = os.getenv("MLFLOW_TRACKING_USERNAME")
+    password = os.getenv("MLFLOW_TRACKING_PASSWORD")
+
+    # Инициализируем MLflow tracking URI
+    import mlflow
+
+    mlflow.set_tracking_uri(tracking_uri)
+    if username:
+        os.environ["MLFLOW_TRACKING_USERNAME"] = username
+    if password:
+        os.environ["MLFLOW_TRACKING_PASSWORD"] = password
+
+    st.session_state["mlflow_initialized"] = True
+    st.session_state["mlflow_tracking_uri"] = tracking_uri
 
 st.set_page_config(page_title="Wine Quality Analyzer", layout="wide")
 
@@ -164,6 +186,25 @@ elif page == "Обучение модели":
                 "Максимальное количество итераций", 100, 2000, MLP_MAX_ITER
             )
 
+        # Настройки MLflow в сайдбаре
+        st.sidebar.subheader("MLflow настройки")
+        use_mlflow = st.sidebar.checkbox("Логировать в MLflow", value=True)
+        experiment_name = st.sidebar.text_input("Имя эксперимента", value=MLFLOW_EXPERIMENT_NAME)
+        register_model = st.sidebar.checkbox("Зарегистрировать модель в MLflow", value=True)
+        register_model_name = None
+        if register_model:
+            # Формируем имя модели правильно
+            model_name_map = {
+                "random_forest": "WineRandomForest",
+                "boosting": "WineBoosting",
+                "mlp": "WineMLP",
+            }
+            default_model_name = model_name_map.get(model_type_str, f"Wine{model_type_str.title()}")
+            register_model_name = st.sidebar.text_input(
+                "Имя модели для регистрации",
+                value=default_model_name,
+            )
+
         if st.button("Обучить модель"):
             with st.spinner("Подготовка данных..."):
                 X, y = get_features_and_target(df)
@@ -173,28 +214,63 @@ elif page == "Обучение модели":
                 st.session_state["scaler"] = scaler  # Сохраняем scaler для предсказаний
 
             with st.spinner("Обучение модели..."):
-                model = train_model(
-                    model_type=model_type,
-                    X_train=X_train_sc,
-                    y_train=y_train,
-                    rf_n_estimators=rf_n_estimators,
-                    rf_max_depth=rf_max_depth,
-                    boosting_n_estimators=boosting_n_estimators,
-                    boosting_max_depth=boosting_max_depth,
-                    boosting_learning_rate=boosting_learning_rate,
-                    mlp_hidden_layer_sizes=mlp_hidden_layer_sizes,
-                    mlp_max_iter=mlp_max_iter,
-                )
+                # Настраиваем MLflow tracking URI и аутентификацию
+                tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
+                username = os.getenv("MLFLOW_TRACKING_USERNAME")
+                password = os.getenv("MLFLOW_TRACKING_PASSWORD")
+
+                with MLflowTrackingContext(
+                    tracking_uri=tracking_uri,
+                    username=username,
+                    password=password,
+                ):
+                    # Используем run_experiment для автоматического логирования в MLflow
+                    result = run_experiment(
+                        X_train=X_train_sc,
+                        y_train=y_train,
+                        X_test=X_test_sc,
+                        y_test=y_test,
+                        model_type=model_type,
+                        rf_n_estimators=rf_n_estimators,
+                        rf_max_depth=rf_max_depth,
+                        boosting_n_estimators=boosting_n_estimators,
+                        boosting_max_depth=boosting_max_depth,
+                        boosting_learning_rate=boosting_learning_rate,
+                        mlp_hidden_layer_sizes=mlp_hidden_layer_sizes,
+                        mlp_max_iter=mlp_max_iter,
+                        use_mlflow=use_mlflow,
+                        experiment_name=experiment_name,
+                        model_artifact_path="model",
+                        save_local=True,
+                        register_model_name=register_model_name if register_model else None,
+                        log_artifacts=True,
+                        df_for_plots=df.drop(columns=["quality", "good_quality"], errors="ignore"),
+                    )
+
+                model = result["model"]
+                metrics = result["metrics"]
+                mlflow_run_id = result.get("mlflow_run_id")
+
                 st.session_state["model"] = model
                 st.session_state["model_type"] = model_type_str
                 st.session_state["X_test_sc"] = X_test_sc
                 st.session_state["y_test"] = y_test
                 st.session_state["feature_names"] = X_train_sc.columns.tolist()
+                st.session_state["mlflow_run_id"] = mlflow_run_id
 
             st.success("Модель обучена!")
 
-            # Оценка
-            metrics = evaluate_model(model, X_test_sc, y_test)
+            # Показываем информацию о MLflow, если логирование было включено
+            if use_mlflow and mlflow_run_id:
+                st.info(f"✓ Эксперимент залогирован в MLflow. Run ID: {mlflow_run_id[:8]}...")
+                try:
+                    import mlflow
+
+                    tracking_uri = mlflow.get_tracking_uri()
+                    st.info(f"MLflow UI: {tracking_uri}")
+                except Exception:  # nosec B110
+                    pass
+
             st.subheader("Метрики модели")
             st.write(f"Тип модели: **{model_type_str.replace('_', ' ').title()}**")
             st.write(f"Accuracy: {metrics['accuracy']:.4f}")
@@ -219,10 +295,6 @@ elif page == "Обучение модели":
                     ax.set_xticks(range(len(importances)))
                     ax.set_xticklabels(ordered_names, rotation=90)
                     st.pyplot(fig)
-
-            # Сохранение модели
-            if st.button("Сохранить модель"):
-                save_model(model)
 
 # Раздел 4: Предсказание качества
 elif page == "Предсказание качества":
