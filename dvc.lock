@@ -27,8 +27,8 @@ stages:
       size: 84199
     - path: src/wine_quality/data.py
       hash: md5
-      md5: 20a580e6c1c999b069f17a3c05fe2a47
-      size: 4208
+      md5: 2645fdefd13f1511d7cf34e6397de28e
+      size: 4172
     - path: src/wine_quality/features.py
       hash: md5
       md5: 626a6e871c8008e2918767ba316ee266
