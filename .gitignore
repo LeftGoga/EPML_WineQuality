@@ -19,6 +19,8 @@ pip-wheel-metadata/
 pip-log.txt
 
 *.png
+!pics/
+!pics/*.png
 *.jpg
 
 

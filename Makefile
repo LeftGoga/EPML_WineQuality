@@ -8,6 +8,9 @@ install:
 prepare:
 	poetry run python src/wine_quality/data.py
 
+features:
+	poetry run python -c "from src.wine_quality.data import save_features; save_features()"
+
 run:
 	poetry run python src/wine_quality/main.py
 

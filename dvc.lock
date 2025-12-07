@@ -3,20 +3,38 @@ stages:
   prepare:
     cmd: make prepare
     outs:
-    - path: data
+    - path: data/winequality-red.csv
       hash: md5
-      md5: f1c1b2e69091b72538a1cf7cde3fbb70.dir
+      md5: 2daeecee174368f8a33b82c8cccae3a5
       size: 84199
-      nfiles: 1
   train:
     cmd: make train
     deps:
-    - path: data
+    - path: data/features.csv
       hash: md5
-      md5: f1c1b2e69091b72538a1cf7cde3fbb70.dir
-      size: 84199
-      nfiles: 1
+      md5: 40209d4dfaaddba6b0cf3ddc0b525687
+      size: 141741
     - path: src/wine_quality/main.py
       hash: md5
       md5: 8c8c61f892864f12306c1522fddc58cc
       size: 6699
+  features:
+    cmd: make features
+    deps:
+    - path: data/winequality-red.csv
+      hash: md5
+      md5: 2daeecee174368f8a33b82c8cccae3a5
+      size: 84199
+    - path: src/wine_quality/data.py
+      hash: md5
+      md5: 20a580e6c1c999b069f17a3c05fe2a47
+      size: 4208
+    - path: src/wine_quality/features.py
+      hash: md5
+      md5: 626a6e871c8008e2918767ba316ee266
+      size: 1854
+    outs:
+    - path: data/features.csv
+      hash: md5
+      md5: 40209d4dfaaddba6b0cf3ddc0b525687
+      size: 141741
