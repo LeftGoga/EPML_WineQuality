@@ -3,13 +3,18 @@ import pandas as pd
 import seaborn as sns
 import streamlit as st
 from config import (
+    BOOSTING_LEARNING_RATE,
+    BOOSTING_MAX_DEPTH,
+    BOOSTING_N_ESTIMATORS,
     DATA_URL,
-    N_ESTIMATORS,
+    MLP_HIDDEN_LAYER_SIZES,
+    MLP_MAX_ITER,
+    RF_MAX_DEPTH,
+    RF_N_ESTIMATORS,
     TEST_SIZE,
 )
 from features import engineer_features, scale_features
-from model import evaluate_model, save_model, train_model
-from sklearn.ensemble import RandomForestClassifier
+from model import ModelType, evaluate_model, save_model, train_model
 from sklearn.metrics import classification_report
 from sklearn.preprocessing import StandardScaler
 
@@ -85,7 +90,7 @@ elif page == "Визуализация":
 
 # Раздел 3: Обучение модели
 elif page == "Обучение модели":
-    st.title("Обучение модели Random Forest")
+    st.title("Обучение модели")
 
     if "df" not in st.session_state:
         st.warning("Сначала загрузите данные в разделе 'Загрузка и просмотр данных'")
@@ -94,9 +99,70 @@ elif page == "Обучение модели":
 
         # Опции в сайдбаре
         test_size = st.sidebar.slider("Размер тестовой выборки", 0.1, 0.5, TEST_SIZE)
-        n_estimators = st.sidebar.number_input("Количество деревьев", 50, 500, N_ESTIMATORS)
-        max_depth = st.sidebar.number_input("Максимальная глубина (0 для None)", 0, 50, 0)
-        max_depth = None if max_depth == 0 else max_depth
+
+        # Выбор типа модели
+        model_type_str = st.sidebar.selectbox(
+            "Тип модели",
+            ["random_forest", "boosting", "mlp"],
+            format_func=lambda x: {
+                "random_forest": "Random Forest",
+                "boosting": "Gradient Boosting",
+                "mlp": "MLP (Neural Network)",
+            }[x],
+        )
+        model_type = ModelType(model_type_str)
+
+        # Параметры в зависимости от типа модели
+        rf_n_estimators = None
+        rf_max_depth = None
+        boosting_n_estimators = None
+        boosting_max_depth = None
+        boosting_learning_rate = None
+        mlp_hidden_layer_sizes = None
+        mlp_max_iter = None
+
+        if model_type == ModelType.RANDOM_FOREST:
+            st.sidebar.subheader("Параметры Random Forest")
+            rf_n_estimators = st.sidebar.number_input(
+                "Количество деревьев", 50, 500, RF_N_ESTIMATORS
+            )
+            max_depth_input = st.sidebar.number_input(
+                "Максимальная глубина (0 для None)",
+                0,
+                50,
+                RF_MAX_DEPTH if RF_MAX_DEPTH is not None else 0,
+            )
+            rf_max_depth = None if max_depth_input == 0 else max_depth_input
+
+        elif model_type == ModelType.BOOSTING:
+            st.sidebar.subheader("Параметры Gradient Boosting")
+            boosting_n_estimators = st.sidebar.number_input(
+                "Количество деревьев", 50, 500, BOOSTING_N_ESTIMATORS
+            )
+            boosting_max_depth = st.sidebar.number_input(
+                "Максимальная глубина", 1, 10, BOOSTING_MAX_DEPTH
+            )
+            boosting_learning_rate = st.sidebar.number_input(
+                "Learning rate", 0.01, 1.0, BOOSTING_LEARNING_RATE, step=0.01
+            )
+
+        elif model_type == ModelType.MLP:
+            st.sidebar.subheader("Параметры MLP")
+            hidden_layers_str = st.sidebar.text_input(
+                "Размеры скрытых слоев (через запятую)", ",".join(map(str, MLP_HIDDEN_LAYER_SIZES))
+            )
+            try:
+                mlp_hidden_layer_sizes = tuple(
+                    int(x.strip()) for x in hidden_layers_str.split(",") if x.strip()
+                )
+            except ValueError:
+                st.sidebar.error(
+                    "Неверный формат. Используйте числа через запятую, например: 100, 50"
+                )
+                mlp_hidden_layer_sizes = MLP_HIDDEN_LAYER_SIZES
+            mlp_max_iter = st.sidebar.number_input(
+                "Максимальное количество итераций", 100, 2000, MLP_MAX_ITER
+            )
 
         if st.button("Обучить модель"):
             with st.spinner("Подготовка данных..."):
@@ -108,9 +174,19 @@ elif page == "Обучение модели":
 
             with st.spinner("Обучение модели..."):
                 model = train_model(
-                    X_train_sc, y_train, n_estimators=n_estimators, max_depth=max_depth
+                    model_type=model_type,
+                    X_train=X_train_sc,
+                    y_train=y_train,
+                    rf_n_estimators=rf_n_estimators,
+                    rf_max_depth=rf_max_depth,
+                    boosting_n_estimators=boosting_n_estimators,
+                    boosting_max_depth=boosting_max_depth,
+                    boosting_learning_rate=boosting_learning_rate,
+                    mlp_hidden_layer_sizes=mlp_hidden_layer_sizes,
+                    mlp_max_iter=mlp_max_iter,
                 )
                 st.session_state["model"] = model
+                st.session_state["model_type"] = model_type_str
                 st.session_state["X_test_sc"] = X_test_sc
                 st.session_state["y_test"] = y_test
                 st.session_state["feature_names"] = X_train_sc.columns.tolist()
@@ -120,6 +196,7 @@ elif page == "Обучение модели":
             # Оценка
             metrics = evaluate_model(model, X_test_sc, y_test)
             st.subheader("Метрики модели")
+            st.write(f"Тип модели: **{model_type_str.replace('_', ' ').title()}**")
             st.write(f"Accuracy: {metrics['accuracy']:.4f}")
             st.write(f"F1-score: {metrics['f1']:.4f}")
 
@@ -129,17 +206,19 @@ elif page == "Обучение модели":
             st.subheader("Confusion Matrix")
             st.text(metrics["confusion_matrix"])
 
-            # Важность признаков
-            if st.button("Показать важность признаков"):
-                fig, ax = plt.subplots(figsize=(10, 6))
-                importances = model.feature_importances_
-                indices = importances.argsort()[::-1]
-                ordered_names = [st.session_state["feature_names"][i] for i in indices]
-                ax.bar(range(len(importances)), importances[indices], align="center")
-                ax.set_title("Важность признаков (Random Forest)")
-                ax.set_xticks(range(len(importances)))
-                ax.set_xticklabels(ordered_names, rotation=90)
-                st.pyplot(fig)
+            # Важность признаков (только для Random Forest и Gradient Boosting)
+            if hasattr(model, "feature_importances_"):
+                if st.button("Показать важность признаков"):
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    importances = model.feature_importances_
+                    indices = importances.argsort()[::-1]
+                    ordered_names = [st.session_state["feature_names"][i] for i in indices]
+                    ax.bar(range(len(importances)), importances[indices], align="center")
+                    model_name = model_type_str.replace("_", " ").title()
+                    ax.set_title(f"Важность признаков ({model_name})")
+                    ax.set_xticks(range(len(importances)))
+                    ax.set_xticklabels(ordered_names, rotation=90)
+                    st.pyplot(fig)
 
             # Сохранение модели
             if st.button("Сохранить модель"):
@@ -152,9 +231,12 @@ elif page == "Предсказание качества":
     if "model" not in st.session_state or "scaler" not in st.session_state:
         st.warning("Сначала обучите модель в разделе 'Обучение модели'")
     else:
-        model: RandomForestClassifier = st.session_state["model"]
+        model = st.session_state["model"]
         scaler: StandardScaler = st.session_state["scaler"]
         feature_names = st.session_state["feature_names"]
+        model_type_str = st.session_state.get("model_type", "unknown")
+
+        st.info(f"Используется модель: **{model_type_str.replace('_', ' ').title()}**")
 
         st.subheader("Введите характеристики вина")
 

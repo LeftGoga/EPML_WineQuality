@@ -4,8 +4,15 @@ import urllib.request
 from typing import cast
 
 import pandas as pd
-from config import BASE_DIR, DATA_URL, RANDOM_STATE, TEST_SIZE
 from sklearn.model_selection import train_test_split
+
+# Используем try/except для поддержки как абсолютных, так и относительных импортов
+try:
+    from .config import BASE_DIR, DATA_URL, RANDOM_STATE, TEST_SIZE
+    from .features import engineer_features
+except ImportError:
+    from config import BASE_DIR, DATA_URL, RANDOM_STATE, TEST_SIZE
+    from features import engineer_features
 
 
 def load_data(url: str | None = None) -> pd.DataFrame:
@@ -68,5 +75,38 @@ def split_data(
     )
 
 
+def save_features(output_path: str | None = None) -> pd.DataFrame:
+    """
+    Загружает данные, создает целевую переменную, применяет feature engineering
+    и сохраняет фичи в CSV файл.
+
+    Args:
+        output_path: Путь для сохранения CSV файла. Если None, используется data/features.csv
+
+    Returns:
+        DataFrame с обработанными фичами
+    """
+    data_dir = BASE_DIR / "data"
+    data_dir.mkdir(exist_ok=True)
+
+    if output_path is None:
+        output_path = str(data_dir / "features.csv")
+
+    # Загружаем данные
+    df = load_data()
+
+    # Создаем целевую переменную
+    df = create_target(df)
+
+    # Применяем feature engineering
+    df = engineer_features(df)
+
+    # Сохраняем фичи (включая целевую переменную для удобства)
+    df.to_csv(output_path, index=False)
+    print(f"Фичи сохранены в {output_path}")
+
+    return df
+
+
 if __name__ == "__main__":
-    load_data()
+    save_features()
