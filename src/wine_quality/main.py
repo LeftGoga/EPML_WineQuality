@@ -1,4 +1,3 @@
-# main.py
 import argparse
 import os
 
@@ -19,7 +18,6 @@ from data import create_target, get_features_and_target, load_data, split_data
 
 
 def parse_args() -> argparse.Namespace:
-    """Парсит аргументы командной строки."""
     parser = argparse.ArgumentParser(description="Обучение модели для предсказания качества вина")
     parser.add_argument(
         "--model-type",
@@ -28,7 +26,6 @@ def parse_args() -> argparse.Namespace:
         choices=["random_forest", "boosting", "mlp"],
         help="Тип модели для обучения (по умолчанию: boosting)",
     )
-    # RandomForest параметры
     parser.add_argument(
         "--rf-n-estimators",
         type=int,
@@ -41,7 +38,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Максимальная глубина для RandomForest",
     )
-    # Boosting параметры
     parser.add_argument(
         "--boosting-n-estimators",
         type=int,
@@ -60,7 +56,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Скорость обучения для Boosting",
     )
-    # MLP параметры
     parser.add_argument(
         "--mlp-hidden-layer-sizes",
         type=str,
@@ -73,7 +68,6 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Максимальное количество итераций для MLP",
     )
-    # Общие параметры
     parser.add_argument(
         "--random-state",
         type=int,
@@ -119,19 +113,15 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_args()
 
-    # Используем переменную окружения или значение по умолчанию
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
     username = os.getenv("MLFLOW_TRACKING_USERNAME")
     password = os.getenv("MLFLOW_TRACKING_PASSWORD")
 
-    # Используем контекстный менеджер для настройки tracking URI и аутентификации
     from mlflow_context import MLflowTrackingContext
 
     with MLflowTrackingContext(tracking_uri=tracking_uri, username=username, password=password):
-        # Проверяем подключение к MLflow (только если не отключен)
         if not args.no_mlflow:
             try:
-                # Пытаемся получить список экспериментов для проверки подключения
                 experiments = mlflow.search_experiments(max_results=1)
                 print(f"✓ Подключение к MLflow успешно: {tracking_uri}")
                 if username:
@@ -152,14 +142,12 @@ if __name__ == "__main__":
         X_train, X_test, y_train, y_test = split_data(X, y)
         X_train_sc, X_test_sc, scaler = scale_features(X_train, X_test)
 
-        # Парсим размеры скрытых слоев для MLP
         mlp_hidden_layer_sizes = None
         if args.mlp_hidden_layer_sizes:
             mlp_hidden_layer_sizes = tuple(
                 int(x.strip()) for x in args.mlp_hidden_layer_sizes.split(",")
             )
 
-        # Определяем имя эксперимента и модели
         model_type = ModelType(args.model_type)
         experiment_name = args.experiment_name or MLFLOW_EXPERIMENT_NAME
         register_model_name = args.register_model_name or f"Wine{model_type.value.title()}"
@@ -188,15 +176,13 @@ if __name__ == "__main__":
         )
         from mlflow.tracking import MlflowClient
 
-        client = MlflowClient()  # Uses the tracking URI you've set
+        client = MlflowClient()
         try:
-            # List all registered models
             registered_models = client.search_registered_models()
             print("All registered models:")
             for model in registered_models:
                 print(f"- {model.name}")
 
-            # Specifically search for versions of 'WineRF'
             versions = client.search_model_versions("name='WineRF'")
             print("Versions for WineRF:")
             for v in versions:
@@ -214,26 +200,21 @@ if __name__ == "__main__":
         mlflow_run_id = res.get("mlflow_run_id")
         if mlflow_run_id:
             print(f"MLflow run id: {mlflow_run_id}")
-            # если хотите — можно напечатать ссылку (при локальном tracking server URL в MLFLOW_TRACKING_URI)
             try:
                 tracking_uri = mlflow.get_tracking_uri()
                 print(f"MLflow tracking URI: {tracking_uri}")
             except Exception as exc:
-                # Игнорируем ошибки при получении tracking URI - это не критично
                 print(f"Warning: could not get tracking URI: {exc}")
 
-        # Визуализации — как раньше
         plot_correlation_heatmap(df.drop(columns=["quality", "good_quality"]))
         plot_feature_importances(model, X.columns.tolist())
 
-        # Анализ экспериментов, если запрошено
         if args.analyze_experiments and mlflow_run_id:
             print("\n" + "=" * 80)
             print("АНАЛИЗ ЭКСПЕРИМЕНТОВ")
             print("=" * 80)
 
             try:
-                # Получаем информацию о текущем эксперименте
                 experiment = mlflow.get_experiment_by_name(experiment_name)
                 if experiment:
                     summary = get_experiment_summary(experiment.experiment_id)
@@ -253,7 +234,6 @@ if __name__ == "__main__":
                                 f"std={stats['std']:.4f}"
                             )
 
-                # Поиск лучших runs
                 runs = search_runs(
                     experiment_ids=[experiment.experiment_id] if experiment else None,
                     filter_string="metrics.accuracy > 0.7",
@@ -274,7 +254,6 @@ if __name__ == "__main__":
                             f"accuracy={acc:.4f}, f1={f1:.4f}, model={model_t}"
                         )
 
-                    # Экспорт сравнения, если запрошено
                     if args.export_comparison:
                         comparison_df = compare_runs(
                             runs[:10],

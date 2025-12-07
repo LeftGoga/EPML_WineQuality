@@ -24,13 +24,11 @@ from sklearn.preprocessing import StandardScaler
 
 from data import create_target, get_features_and_target, load_data, split_data
 
-# Настройка MLflow при запуске приложения
 if "mlflow_initialized" not in st.session_state:
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
     username = os.getenv("MLFLOW_TRACKING_USERNAME")
     password = os.getenv("MLFLOW_TRACKING_PASSWORD")
 
-    # Инициализируем MLflow tracking URI
     import mlflow
 
     mlflow.set_tracking_uri(tracking_uri)
@@ -51,7 +49,6 @@ page = st.sidebar.radio(
 )
 
 
-# Функция для загрузки данных (с кэшированием для производительности)
 @st.cache_data
 def get_data(url: str = DATA_URL, threshold: int = 7) -> pd.DataFrame:
     df = load_data(url)
@@ -59,11 +56,9 @@ def get_data(url: str = DATA_URL, threshold: int = 7) -> pd.DataFrame:
     return df
 
 
-# Раздел 1: Загрузка и просмотр данных
 if page == "Загрузка и просмотр данных":
     st.title("Загрузка и просмотр данных о качестве вина")
 
-    # Опции в сайдбаре
     data_url = st.sidebar.text_input("URL датасета", DATA_URL)
     quality_threshold = st.sidebar.slider("Порог для 'good_quality' (quality >= ?)", 5, 8, 7)
 
@@ -83,7 +78,6 @@ if page == "Загрузка и просмотр данных":
         st.subheader("Распределение 'good_quality'")
         st.bar_chart(df["good_quality"].value_counts())
 
-# Раздел 2: Визуализация
 elif page == "Визуализация":
     st.title("Визуализация данных")
 
@@ -92,7 +86,6 @@ elif page == "Визуализация":
     else:
         df = st.session_state["df"]
 
-        # Визуализация распределения качества
         if st.button("Показать распределение качества"):
             fig, ax = plt.subplots(figsize=(8, 5))
             counts = df["quality"].value_counts().sort_index()
@@ -102,7 +95,6 @@ elif page == "Визуализация":
             ax.set_ylabel("Количество")
             st.pyplot(fig)
 
-        # Heatmap корреляций
         if st.button("Показать матрицу корреляций"):
             fig, ax = plt.subplots(figsize=(12, 9))
             corr = df.corr()
@@ -110,7 +102,6 @@ elif page == "Визуализация":
             ax.set_title("Матрица корреляций")
             st.pyplot(fig)
 
-# Раздел 3: Обучение модели
 elif page == "Обучение модели":
     st.title("Обучение модели")
 
@@ -119,10 +110,8 @@ elif page == "Обучение модели":
     else:
         df = st.session_state["df"]
 
-        # Опции в сайдбаре
         test_size = st.sidebar.slider("Размер тестовой выборки", 0.1, 0.5, TEST_SIZE)
 
-        # Выбор типа модели
         model_type_str = st.sidebar.selectbox(
             "Тип модели",
             ["random_forest", "boosting", "mlp"],
@@ -134,7 +123,6 @@ elif page == "Обучение модели":
         )
         model_type = ModelType(model_type_str)
 
-        # Параметры в зависимости от типа модели
         rf_n_estimators = None
         rf_max_depth = None
         boosting_n_estimators = None
@@ -186,14 +174,12 @@ elif page == "Обучение модели":
                 "Максимальное количество итераций", 100, 2000, MLP_MAX_ITER
             )
 
-        # Настройки MLflow в сайдбаре
         st.sidebar.subheader("MLflow настройки")
         use_mlflow = st.sidebar.checkbox("Логировать в MLflow", value=True)
         experiment_name = st.sidebar.text_input("Имя эксперимента", value=MLFLOW_EXPERIMENT_NAME)
         register_model = st.sidebar.checkbox("Зарегистрировать модель в MLflow", value=True)
         register_model_name = None
         if register_model:
-            # Формируем имя модели правильно
             model_name_map = {
                 "random_forest": "WineRandomForest",
                 "boosting": "WineBoosting",
@@ -211,10 +197,9 @@ elif page == "Обучение модели":
                 X = engineer_features(X)
                 X_train, X_test, y_train, y_test = split_data(X, y, test_size=test_size)
                 X_train_sc, X_test_sc, scaler = scale_features(X_train, X_test)
-                st.session_state["scaler"] = scaler  # Сохраняем scaler для предсказаний
+                st.session_state["scaler"] = scaler
 
             with st.spinner("Обучение модели..."):
-                # Настраиваем MLflow tracking URI и аутентификацию
                 tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
                 username = os.getenv("MLFLOW_TRACKING_USERNAME")
                 password = os.getenv("MLFLOW_TRACKING_PASSWORD")
@@ -224,7 +209,6 @@ elif page == "Обучение модели":
                     username=username,
                     password=password,
                 ):
-                    # Используем run_experiment для автоматического логирования в MLflow
                     result = run_experiment(
                         X_train=X_train_sc,
                         y_train=y_train,
@@ -260,7 +244,6 @@ elif page == "Обучение модели":
 
             st.success("Модель обучена!")
 
-            # Показываем информацию о MLflow, если логирование было включено
             if use_mlflow and mlflow_run_id:
                 st.info(f"✓ Эксперимент залогирован в MLflow. Run ID: {mlflow_run_id[:8]}...")
                 try:
@@ -282,7 +265,6 @@ elif page == "Обучение модели":
             st.subheader("Confusion Matrix")
             st.text(metrics["confusion_matrix"])
 
-            # Важность признаков (только для Random Forest и Gradient Boosting)
             if hasattr(model, "feature_importances_"):
                 if st.button("Показать важность признаков"):
                     fig, ax = plt.subplots(figsize=(10, 6))
@@ -296,7 +278,6 @@ elif page == "Обучение модели":
                     ax.set_xticklabels(ordered_names, rotation=90)
                     st.pyplot(fig)
 
-# Раздел 4: Предсказание качества
 elif page == "Предсказание качества":
     st.title("Предсказание качества вина")
 

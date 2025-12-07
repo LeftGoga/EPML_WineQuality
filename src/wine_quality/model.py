@@ -48,8 +48,6 @@ except Exception:
 
 
 class ModelType(str, Enum):
-    """Типы поддерживаемых моделей."""
-
     RANDOM_FOREST = "random_forest"
     BOOSTING = "boosting"
     MLP = "mlp"
@@ -70,7 +68,6 @@ def train_model(
     mlp_max_iter: int | None = None,
     random_state: int | None = None,
 ) -> RandomForestClassifier | GradientBoostingClassifier | MLPClassifier:
-    """Обучает модель указанного типа."""
     if isinstance(model_type, str):
         model_type = ModelType(model_type.lower())
 
@@ -164,7 +161,6 @@ def run_experiment(
     log_artifacts: bool = True,
     df_for_plots: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
-    """Запускает тренировку, оценку и логгирование."""
     if use_mlflow and not MLFLOW_AVAILABLE:
         raise RuntimeError("MLflow не установлен. Установите mlflow: pip install mlflow")
 
@@ -189,11 +185,9 @@ def run_experiment(
     mlflow_run_id = None
 
     if use_mlflow and MLFLOW_AVAILABLE:
-        # Проверяем подключение к MLflow
         try:
             tracking_uri = mlflow.get_tracking_uri()
             print(f"✓ MLflow Tracking URI: {tracking_uri}")
-            # Пробуем получить список экспериментов для проверки подключения
             client = MlflowClient()
             experiments = client.search_experiments(max_results=1)
             print(f"✓ Подключение к MLflow успешно. Найдено экспериментов: {len(experiments)}")
@@ -201,11 +195,9 @@ def run_experiment(
             print(f"⚠ Предупреждение: проблема с подключением к MLflow: {e}")
             traceback.print_exc()
 
-        # Используем контекстные менеджеры для работы с MLflow
         exp_name = experiment_name or MLFLOW_EXPERIMENT_NAME
         print(f"✓ Используем эксперимент: {exp_name}")
         with MLflowExperimentContext(exp_name):
-            # Подготавливаем параметры для логирования
             params: dict[str, Any] = {
                 "model_type": model_type.value,
                 "random_state": random_state or RANDOM_STATE,
@@ -243,21 +235,16 @@ def run_experiment(
             ) as run:
                 mlflow_run_id = run.info.run_id
 
-                # Логируем метрики (декоратор уже залогировал accuracy и f1, добавляем f1_weighted)
                 mlflow.log_metric("f1_weighted", float(metrics["f1"]))
 
-                # Логируем модель через контекстный менеджер
                 kwargs = {}
                 if infer_signature and X_train is not None:
                     try:
                         kwargs["signature"] = infer_signature(X_train, model.predict(X_train))
                     except Exception as exc:
-                        # Сигнатура не критична, продолжаем без неё
                         print(f"Warning: could not infer signature: {exc}")
 
-                # Всегда логируем модель как артефакт
                 try:
-                    # Проверяем, что run активен
                     active_run = mlflow.active_run()
                     if not active_run:
                         print("⚠ ОШИБКА: Нет активного MLflow run для логирования модели!")
@@ -266,8 +253,6 @@ def run_experiment(
                         print(f"✓ Run URI: {active_run.info.artifact_uri}")
                         print(f"✓ Логируем модель в {model_artifact_path}...")
                         try:
-                            # Используем старый способ логирования без logged models API
-                            # для совместимости с MLflow сервером
                             mlflow.sklearn.log_model(
                                 sk_model=model,
                                 artifact_path=model_artifact_path,
@@ -275,7 +260,6 @@ def run_experiment(
                             )
                             print(f"✓✓✓ Модель залогирована как артефакт в {model_artifact_path}")
 
-                            # Проверяем, что артефакт действительно залогирован
                             try:
                                 client = MlflowClient()
                                 artifacts = client.list_artifacts(
@@ -289,7 +273,6 @@ def run_experiment(
                             except Exception as list_error:
                                 print(f"⚠ Не удалось проверить артефакты: {list_error}")
 
-                            # Регистрируем модель отдельно, если указано имя
                             if register_model_name:
                                 try:
                                     print(
@@ -299,7 +282,6 @@ def run_experiment(
                                         f"runs:/{active_run.info.run_id}/{model_artifact_path}"
                                     )
                                     print(f"✓ Run URI: {run_uri}")
-                                    # Создаем зарегистрированную модель, если не существует
                                     client = MlflowClient()
                                     try:
                                         client.get_registered_model(register_model_name)
@@ -307,13 +289,11 @@ def run_experiment(
                                             f"✓ Модель '{register_model_name}' уже существует в реестре"
                                         )
                                     except Exception:
-                                        # Модель не существует, создаем её
                                         client.create_registered_model(register_model_name)
                                         print(
                                             f"✓ Создана новая зарегистрированная модель: '{register_model_name}'"
                                         )
 
-                                    # Регистрируем версию модели
                                     mv = mlflow.register_model(
                                         model_uri=run_uri,
                                         name=register_model_name,
@@ -326,7 +306,6 @@ def run_experiment(
                                         f"⚠ ОШИБКА: Не удалось зарегистрировать модель '{register_model_name}': {reg_error}"
                                     )
                                     traceback.print_exc()
-                                    # Не прерываем выполнение, модель уже залогирована
                         except Exception as model_error:
                             print(f"✗✗✗ ОШИБКА при логировании модели: {model_error}")
                             traceback.print_exc()
@@ -345,13 +324,11 @@ def run_experiment(
                     }
                 )
 
-                # Логируем артефакты (графики), если включено
                 print(
                     f"✓ log_artifacts={log_artifacts}, df_for_plots is not None={df_for_plots is not None}"
                 )
                 if log_artifacts:
                     try:
-                        # Проверяем активный run
                         active_run = mlflow.active_run()
                         if not active_run:
                             print("⚠ ОШИБКА: Нет активного MLflow run для логирования артефактов!")
@@ -359,15 +336,11 @@ def run_experiment(
                             print(f"✓ Логируем артефакты в активный run: {active_run.info.run_id}")
                             print(f"✓ Artifact URI: {active_run.info.artifact_uri}")
                             print(f"✓ Tracking URI: {mlflow.get_tracking_uri()}")
-                            # Создаем временную директорию для графиков
-                            # ВАЖНО: используем mkdtemp вместо TemporaryDirectory, чтобы директория не удалялась автоматически
-                            # MLflow копирует файлы синхронно, но лучше не рисковать
                             temp_plots_dir = tempfile.mkdtemp()
                             print(f"✓ Временная директория для графиков: {temp_plots_dir}")
                             plots_dir = Path(temp_plots_dir)
 
                             try:
-                                # Логируем график важности признаков, если модель поддерживает
                                 if hasattr(model, "feature_importances_") and X_train is not None:
                                     try:
                                         feature_plot_path = plots_dir / "feature_importances.png"
@@ -400,7 +373,6 @@ def run_experiment(
                                             if file_size == 0:
                                                 print("⚠ ВНИМАНИЕ: Файл пустой!")
                                             try:
-                                                # Убеждаемся, что файл существует и читается перед логированием
                                                 with open(feature_plot_path, "rb") as f:
                                                     content = f.read()
                                                     print(
@@ -412,7 +384,6 @@ def run_experiment(
                                                 print(
                                                     "✓✓✓ График важности признаков залогирован в MLflow"
                                                 )
-                                                # Проверяем, что артефакт действительно залогирован
                                                 try:
                                                     client = MlflowClient()
                                                     artifacts = client.list_artifacts(
@@ -440,7 +411,6 @@ def run_experiment(
                                         )
                                         traceback.print_exc()
 
-                                # Логируем матрицу корреляций, если предоставлен DataFrame
                                 if df_for_plots is not None and len(df_for_plots) > 0:
                                     try:
                                         corr_plot_path = plots_dir / "correlation_heatmap.png"
@@ -468,7 +438,6 @@ def run_experiment(
                                             if file_size == 0:
                                                 print("⚠ ВНИМАНИЕ: Файл пустой!")
                                             try:
-                                                # Убеждаемся, что файл существует и читается перед логированием
                                                 with open(corr_plot_path, "rb") as f:
                                                     content = f.read()
                                                     print(
@@ -480,7 +449,6 @@ def run_experiment(
                                                 print(
                                                     "✓✓✓ Матрица корреляций залогирована в MLflow"
                                                 )
-                                                # Проверяем, что артефакт действительно залогирован
                                                 try:
                                                     client = MlflowClient()
                                                     artifacts = client.list_artifacts(
@@ -506,7 +474,6 @@ def run_experiment(
                                         print(f"⚠ Не удалось создать матрицу корреляций: {e}")
                                         traceback.print_exc()
 
-                                # Финальная проверка всех залогированных артефактов
                                 try:
                                     client = MlflowClient()
                                     all_artifacts = client.list_artifacts(active_run.info.run_id)
@@ -520,7 +487,6 @@ def run_experiment(
                                         f"⚠ Не удалось проверить финальный список артефактов: {final_check_err}"
                                     )
                             finally:
-                                # Удаляем временную директорию вручную после логирования
                                 try:
                                     shutil.rmtree(temp_plots_dir)
                                     print(f"✓ Временная директория удалена: {temp_plots_dir}")
@@ -531,7 +497,6 @@ def run_experiment(
                     except Exception as e:
                         print(f"⚠ Предупреждение: не удалось залогировать артефакты: {e}")
                         traceback.print_exc()
-                        # Удаляем временную директорию даже при ошибке
                         try:
                             if "temp_plots_dir" in locals():
                                 shutil.rmtree(temp_plots_dir)
@@ -540,19 +505,15 @@ def run_experiment(
                 else:
                     print("⚠ log_artifacts=False, артефакты не будут логироваться")
 
-                # Устанавливаем теги и переводим в Staging
                 if register_model_name:
                     try:
                         client = MlflowClient()
-                        # Проверяем, существует ли модель в реестре
                         try:
-                            # Пытаемся получить все версии модели (используем search_model_versions вместо deprecated get_latest_versions)
                             all_versions = client.search_model_versions(
                                 f"name='{register_model_name}'"
                             )
                             versions = [v for v in all_versions if v.run_id == run.info.run_id]
                         except Exception as e:
-                            # Модель не существует в реестре - это нормально, если регистрация не удалась
                             error_msg = str(e)
                             if (
                                 "RESOURCE_DOES_NOT_EXIST" in error_msg
@@ -585,7 +546,6 @@ def run_experiment(
                             )
                     except Exception as e:
                         print(f"Ошибка при работе с Model Registry: {e}")
-                        # Продолжаем выполнение, так как это не критично
 
     if save_local:
         save_model(model)

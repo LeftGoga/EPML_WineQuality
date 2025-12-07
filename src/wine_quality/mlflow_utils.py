@@ -45,7 +45,7 @@ def search_experiments(
 def search_runs(
     experiment_ids: list[str] | None = None,
     filter_string: str | None = None,
-    run_view_type: int = 1,  # ACTIVE_ONLY
+    run_view_type: int = 1,
     max_results: int = 1000,
     order_by: list[str] | None = None,
 ) -> list[Run]:
@@ -104,8 +104,8 @@ def filter_runs_by_metrics(
         filtered = filter_runs_by_metrics(
             runs,
             {
-                "accuracy": (0.8, 1.0),  # 0.8 <= accuracy <= 1.0
-                "f1_score": 0.9,  # f1_score >= 0.9
+                "accuracy": (0.8, 1.0),
+                "f1_score": 0.9,
             }
         )
     """
@@ -155,7 +155,7 @@ def filter_runs_by_params(
             runs,
             {
                 "model_type": "random_forest",
-                "n_estimators": ["100", "200"],  # n_estimators = 100 или 200
+                "n_estimators": ["100", "200"],
             }
         )
     """
@@ -220,7 +220,6 @@ def compare_runs(
             ),
         }
 
-        # Добавляем метрики
         if metric_names:
             for metric_name in metric_names:
                 row[f"metric_{metric_name}"] = run.data.metrics.get(metric_name)
@@ -228,7 +227,6 @@ def compare_runs(
             for metric_name, metric_value in run.data.metrics.items():
                 row[f"metric_{metric_name}"] = metric_value
 
-        # Добавляем параметры
         if param_names:
             for param_name in param_names:
                 row[f"param_{param_name}"] = run.data.params.get(param_name)
@@ -236,7 +234,6 @@ def compare_runs(
             for param_name, param_value in run.data.params.items():
                 row[f"param_{param_name}"] = param_value
 
-        # Добавляем теги
         for tag_name, tag_value in run.data.tags.items():
             row[f"tag_{tag_name}"] = tag_value
 
@@ -266,10 +263,9 @@ def get_best_runs(
     Пример использования:
         best_runs = get_best_runs(runs, "accuracy", ascending=False, top_k=5)
     """
-    # Фильтруем runs, у которых есть указанная метрика
+
     runs_with_metric = [run for run in runs if metric_name in run.data.metrics]
 
-    # Сортируем по метрике
     sorted_runs = sorted(
         runs_with_metric,
         key=lambda r: r.data.metrics[metric_name],
@@ -304,13 +300,11 @@ def get_experiment_summary(experiment_id: str) -> dict[str, Any]:
             "failed_runs": 0,
         }
 
-    # Подсчитываем статистику
     total_runs = len(runs)
     active_runs = sum(1 for r in runs if r.info.status == "RUNNING")
     finished_runs = sum(1 for r in runs if r.info.status == "FINISHED")
     failed_runs = sum(1 for r in runs if r.info.status == "FAILED")
 
-    # Собираем все метрики
     all_metrics: dict[str, list[float]] = {}
     for run in runs:
         if run.info.status == "FINISHED":
@@ -318,7 +312,6 @@ def get_experiment_summary(experiment_id: str) -> dict[str, Any]:
                 if isinstance(metric_value, (int, float)):
                     all_metrics.setdefault(metric_name, []).append(float(metric_value))
 
-    # Вычисляем статистику по метрикам
     metrics_summary: dict[str, dict[str, float]] = {}
     for metric_name, values in all_metrics.items():
         if values:
@@ -384,7 +377,6 @@ def delete_runs(
     for run_id in run_ids:
         try:
             if experiment_id:
-                # Проверяем, что run принадлежит указанному эксперименту
                 run = client.get_run(run_id)
                 if run.info.experiment_id != experiment_id:
                     print(

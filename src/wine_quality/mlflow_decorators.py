@@ -12,11 +12,10 @@ import inspect
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import mlflow
 
-# Импорты для логирования моделей (опциональные, импортируются по требованию)
 try:
     import mlflow.sklearn
 except ImportError:
@@ -44,27 +43,24 @@ def log_params(func: F) -> F:
     Пример использования:
         @log_params
         def train_model(n_estimators=100, max_depth=5):
-            # Параметры автоматически залогируются
+
             pass
     """
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        # Получаем сигнатуру функции
         sig = inspect.signature(func)
         bound_args = sig.bind(*args, **kwargs)
         bound_args.apply_defaults()
 
-        # Логируем параметры только если есть активный MLflow run
         try:
             active_run = mlflow.active_run()
             if active_run is not None:
                 params = {}
                 for param_name, param_value in bound_args.arguments.items():
-                    # Пропускаем self для методов
                     if param_name == "self":
                         continue
-                    # Конвертируем значения в строки для MLflow
+
                     if isinstance(param_value, (list, tuple, dict)):
                         params[param_name] = str(param_value)
                     else:
@@ -73,12 +69,11 @@ def log_params(func: F) -> F:
                 if params:
                     mlflow.log_params(params)
         except Exception:  # nosec B110
-            # Игнорируем ошибки, если MLflow не настроен или нет активного run
             pass
 
         return func(*args, **kwargs)
 
-    return wrapper  # type: ignore[return-value]
+    return cast(F, wrapper)
 
 
 def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
@@ -95,7 +90,7 @@ def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
 
         @log_metrics()
         def evaluate_model():
-            return {"accuracy": 0.95, "f1_score": 0.92}  # Все метрики залогируются
+            return {"accuracy": 0.95, "f1_score": 0.92}
     """
 
     def decorator(func: F) -> F:
@@ -103,20 +98,17 @@ def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
 
-            # Если результат - словарь, логируем метрики только если есть активный MLflow run
             try:
                 active_run = mlflow.active_run()
                 if active_run is not None and isinstance(result, dict):
                     metrics_to_log = {}
                     if metric_names:
-                        # Логируем только указанные метрики
                         for metric_name in metric_names:
                             if metric_name in result:
                                 value = result[metric_name]
                                 if isinstance(value, (int, float)):
                                     metrics_to_log[metric_name] = float(value)
                     else:
-                        # Логируем все числовые значения из словаря
                         for key, value in result.items():
                             if isinstance(value, (int, float)) and not isinstance(value, bool):
                                 metrics_to_log[key] = float(value)
@@ -124,12 +116,11 @@ def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
                     if metrics_to_log:
                         mlflow.log_metrics(metrics_to_log)
             except Exception:  # nosec B110
-                # Игнорируем ошибки, если MLflow не настроен или нет активного run
                 pass
 
             return result
 
-        return wrapper  # type: ignore[return-value]
+        return cast(F, wrapper)
 
     return decorator
 
@@ -141,7 +132,7 @@ def log_execution_time(func: F) -> F:
     Пример использования:
         @log_execution_time
         def train_model():
-            # Время выполнения будет залогировано как метрика "execution_time_seconds"
+
             pass
     """
 
@@ -169,7 +160,7 @@ def log_execution_time(func: F) -> F:
                 pass
             raise
 
-    return wrapper  # type: ignore[return-value]
+    return cast(F, wrapper)
 
 
 def log_artifacts(artifact_path: str | None = None) -> Callable[[F], F]:
@@ -182,7 +173,7 @@ def log_artifacts(artifact_path: str | None = None) -> Callable[[F], F]:
         @log_artifacts("plots")
         def create_plot():
             plt.savefig("plot.png")
-            return "plot.png"  # Файл будет залогирован
+            return "plot.png"
     """
 
     def decorator(func: F) -> F:
@@ -190,7 +181,6 @@ def log_artifacts(artifact_path: str | None = None) -> Callable[[F], F]:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
 
-            # Если результат - строка (путь к файлу)
             if isinstance(result, str):
                 path = Path(result)
                 if path.exists():
@@ -199,7 +189,6 @@ def log_artifacts(artifact_path: str | None = None) -> Callable[[F], F]:
                     elif path.is_dir():
                         mlflow.log_artifacts(str(path), artifact_path=artifact_path)
 
-            # Если результат - Path объект
             elif isinstance(result, Path):
                 if result.exists():
                     if result.is_file():
@@ -207,7 +196,6 @@ def log_artifacts(artifact_path: str | None = None) -> Callable[[F], F]:
                     elif result.is_dir():
                         mlflow.log_artifacts(str(result), artifact_path=artifact_path)
 
-            # Если результат - список путей
             elif isinstance(result, list):
                 for item in result:
                     if isinstance(item, (str, Path)):
@@ -217,7 +205,7 @@ def log_artifacts(artifact_path: str | None = None) -> Callable[[F], F]:
 
             return result
 
-        return wrapper  # type: ignore[return-value]
+        return cast(F, wrapper)
 
     return decorator
 
@@ -242,15 +230,13 @@ def mlflow_run(
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Устанавливаем эксперимент, если указан
             if experiment_name:
                 mlflow.set_experiment(experiment_name)
 
-            # Создаём run
             with mlflow.start_run(run_name=run_name, tags=tags):
                 return func(*args, **kwargs)
 
-        return wrapper  # type: ignore[return-value]
+        return cast(F, wrapper)
 
     return decorator
 
@@ -267,7 +253,7 @@ def log_model_artifact(
         def train_model():
             model = RandomForestClassifier()
             model.fit(X, y)
-            return model  # Модель будет залогирована
+            return model
     """
 
     def decorator(func: F) -> F:
@@ -275,7 +261,6 @@ def log_model_artifact(
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = func(*args, **kwargs)
 
-            # Пытаемся определить тип модели и залогировать
             if result is not None:
                 model_type = type(result).__module__
 
@@ -303,7 +288,7 @@ def log_model_artifact(
 
             return result
 
-        return wrapper  # type: ignore[return-value]
+        return cast(F, wrapper)
 
     return decorator
 

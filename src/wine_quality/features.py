@@ -5,15 +5,6 @@ from sklearn.preprocessing import StandardScaler
 
 
 def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Небольшой pipeline feature engineering:
-      - копия DataFrame
-      - создаёт несколько простых производных признаков, которые часто полезны:
-         * total_acidity = fixed_acidity + volatile_acidity
-         * density_per_alcohol = density / (alcohol + 1e-6)
-         * sulfates_to_chlorides = sulfates / (chlorides + 1e-6)
-    Можно расширять дальше по потребностям.
-    """
     df = df.copy()
     cols = set(df.columns)
     if {"fixed_acidity", "volatile_acidity"}.issubset(cols):
@@ -28,11 +19,6 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 def scale_features(
     X_train: pd.DataFrame, X_test: pd.DataFrame
 ) -> tuple[pd.DataFrame, pd.DataFrame, StandardScaler]:
-    """
-    Масштабирует признаки StandardScaler'ом, возвращает:
-      X_train_scaled (DataFrame), X_test_scaled (DataFrame), scaler (fitted StandardScaler)
-    Сохраняет колонки и индекс DataFrame.
-    """
     scaler = StandardScaler()
     scaler.fit(X_train)
     X_train_sc = pd.DataFrame(

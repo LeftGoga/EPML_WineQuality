@@ -1,7 +1,6 @@
 version: "3.9"
 
 services:
-  # PostgreSQL база данных для MLflow
   postgres:
     image: postgres:15-alpine
     container_name: mlflow_postgres
@@ -20,7 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # MLflow Tracking Server
   mlflow:
     build:
       context: .
@@ -37,7 +35,7 @@ services:
       - "5000:5000"
     volumes:
       - mlflow_artifacts:/mlflow/artifacts
-      - ./basic_auth.ini:/mlflow/basic_auth.ini  # Добавьте volume для конфига
+      - ./basic_auth.ini:/mlflow/basic_auth.ini
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,8 +43,8 @@ services:
     environment:
       - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow@postgres:5432/mlflow
       - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
-      - MLFLOW_FLASK_SERVER_SECRET_KEY=your_super_secret_key  # Обязательно! Генерируйте сильный ключ (например, python -c "import secrets; print(secrets.token_hex(32))")
-      - MLFLOW_AUTH_CONFIG_PATH=/mlflow/basic_auth.ini  # Путь к конфигу внутри контейнера
+      - MLFLOW_FLASK_SERVER_SECRET_KEY=your_super_secret_key
+      - MLFLOW_AUTH_CONFIG_PATH=/mlflow/basic_auth.ini
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -66,8 +64,8 @@ services:
       - C:/dvc-storage:/dvc-storage
     environment:
       - MLFLOW_TRACKING_URI=http://mlflow:5000
-      - MLFLOW_TRACKING_USERNAME=admin  # Или ваш username
-      - MLFLOW_TRACKING_PASSWORD=123  # Пароль от админа
+      - MLFLOW_TRACKING_USERNAME=admin
+      - MLFLOW_TRACKING_PASSWORD=password1234567890
     depends_on:
       mlflow:
         condition: service_healthy

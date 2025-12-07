@@ -1,10 +1,3 @@
-"""
-Контекстные менеджеры для работы с MLflow.
-
-Этот модуль предоставляет удобные контекстные менеджеры для автоматизации
-логирования экспериментов в MLflow.
-"""
-
 from __future__ import annotations
 
 import os
@@ -20,7 +13,6 @@ from typing import Any
 import mlflow
 from mlflow.tracking import MlflowClient
 
-# Импорты для логирования моделей (опциональные, импортируются по требованию)
 try:
     import mlflow.sklearn
 except ImportError:
@@ -38,40 +30,18 @@ except ImportError:
 
 
 class MLflowExperimentContext:
-    """
-    Контекстный менеджер для работы с экспериментом MLflow.
-
-    Автоматически создаёт эксперимент, если он не существует,
-    и устанавливает его как текущий.
-
-    Пример использования:
-        with MLflowExperimentContext("my_experiment") as exp:
-            mlflow.log_param("param1", "value1")
-            mlflow.log_metric("accuracy", 0.95)
-    """
-
     def __init__(
         self,
         experiment_name: str,
         create_if_not_exists: bool = True,
         tags: dict[str, str] | None = None,
     ):
-        """
-        Инициализирует контекстный менеджер для эксперимента.
-
-        Args:
-            experiment_name: Имя эксперимента
-            create_if_not_exists: Создавать эксперимент, если не существует
-            tags: Теги для эксперимента
-        """
         self.experiment_name = experiment_name
         self.create_if_not_exists = create_if_not_exists
         self.tags = tags or {}
         self._previous_experiment_id = None
 
     def __enter__(self) -> MLflowExperimentContext:
-        """Входит в контекст и настраивает эксперимент."""
-        # Сохраняем текущий эксперимент
         try:
             current_experiment = mlflow.get_experiment_by_name(self.experiment_name)
             if current_experiment:
@@ -81,39 +51,28 @@ class MLflowExperimentContext:
         except Exception:
             self._previous_experiment_id = None
 
-        # Создаём или получаем эксперимент
         if self.create_if_not_exists:
             try:
-                # Сначала проверяем, существует ли эксперимент (включая удаленные)
                 client = MlflowClient()
                 try:
                     experiment = mlflow.get_experiment_by_name(self.experiment_name)
                     if experiment:
-                        # Эксперимент существует и не удален
                         experiment_id = experiment.experiment_id
-                        # Обновляем теги, если они предоставлены
                         if self.tags:
                             for key, value in self.tags.items():
                                 client.set_experiment_tag(experiment_id, key, value)
                     else:
-                        # Эксперимент не существует, создаем новый
                         experiment_id = mlflow.create_experiment(
                             self.experiment_name, tags=self.tags
                         )
                 except Exception:
-                    # Если get_experiment_by_name не работает, пробуем создать
                     experiment_id = mlflow.create_experiment(self.experiment_name, tags=self.tags)
             except Exception as e:
-                # Эксперимент уже существует или был удален
                 error_msg = str(e)
                 if "deleted" in error_msg.lower():
-                    # Пытаемся восстановить удаленный эксперимент
                     try:
                         client = MlflowClient()
-                        # Получаем ID удаленного эксперимента
-                        experiments = client.search_experiments(
-                            view_type=3  # ALL (включая удаленные)
-                        )
+                        experiments = client.search_experiments(view_type=3)
                         deleted_exp = None
                         for exp in experiments:
                             if (
@@ -124,12 +83,10 @@ class MLflowExperimentContext:
                                 break
 
                         if deleted_exp:
-                            # Восстанавливаем эксперимент
                             client.restore_experiment(deleted_exp.experiment_id)
                             experiment_id = deleted_exp.experiment_id
                             print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
                         else:
-                            # Создаем новый с другим именем
                             new_name = f"{self.experiment_name}_{int(time.time())}"
                             experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
                             print(
@@ -137,7 +94,6 @@ class MLflowExperimentContext:
                             )
                             self.experiment_name = new_name
                     except Exception:
-                        # Если не удалось восстановить, создаем новый
                         new_name = f"{self.experiment_name}_{int(time.time())}"
                         experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
                         print(
@@ -145,11 +101,9 @@ class MLflowExperimentContext:
                         )
                         self.experiment_name = new_name
                 else:
-                    # Эксперимент уже существует (не удален)
                     experiment = mlflow.get_experiment_by_name(self.experiment_name)
                     if experiment:
                         experiment_id = experiment.experiment_id
-                        # Обновляем теги, если они предоставлены
                         if self.tags:
                             client = MlflowClient()
                             for key, value in self.tags.items():
@@ -166,9 +120,7 @@ class MLflowExperimentContext:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Выходит из контекста."""
-        # Восстанавливать предыдущий эксперимент не нужно,
-        # так как MLflow управляет этим автоматически
+        pass
 
 
 class MLflowRunContext:
@@ -195,16 +147,6 @@ class MLflowRunContext:
         tags: dict[str, str] | None = None,
         log_system_info: bool = True,
     ):
-        """
-        Инициализирует контекстный менеджер для run.
-
-        Args:
-            experiment_name: Имя эксперимента (если None, используется текущий)
-            run_name: Имя run
-            params: Параметры для логирования
-            tags: Теги для run
-            log_system_info: Логировать системную информацию
-        """
         self.experiment_name = experiment_name
         self.run_name = run_name
         self.params = params or {}
@@ -214,18 +156,15 @@ class MLflowRunContext:
 
     def __enter__(self) -> mlflow.entities.Run:
         """Входит в контекст и создаёт run."""
-        # Устанавливаем эксперимент, если указан
+
         if self.experiment_name:
             mlflow.set_experiment(self.experiment_name)
 
-        # Создаём run
         self._run = mlflow.start_run(run_name=self.run_name, tags=self.tags)
 
-        # Логируем параметры
         if self.params:
             mlflow.log_params(self.params)
 
-        # Логируем системную информацию
         if self.log_system_info:
             try:
                 mlflow.log_params(
@@ -235,12 +174,11 @@ class MLflowRunContext:
                     }
                 )
             except Exception:  # nosec B110
-                pass  # Игнорируем ошибки логирования системной информации
+                pass
 
         return self._run
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Выходит из контекста и завершает run."""
         if self._run:
             mlflow.end_run()
 
@@ -249,19 +187,6 @@ class MLflowRunContext:
 def mlflow_artifact_context(
     artifact_name: str, artifact_path: str | None = None
 ) -> Generator[Path, None, None]:
-    """
-    Контекстный менеджер для работы с артефактами.
-
-    Создаёт временную директорию для артефактов и автоматически
-    логирует их в MLflow при выходе из контекста.
-
-    Пример использования:
-        with mlflow_artifact_context("plots", "visualizations") as artifact_dir:
-            plot_path = artifact_dir / "plot.png"
-            # Создаём файл
-            plt.savefig(plot_path)
-            # Файл автоматически залогируется при выходе из контекста
-    """
     with tempfile.TemporaryDirectory() as temp_dir:
         artifact_dir = Path(temp_dir) / artifact_name
         artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -269,7 +194,6 @@ def mlflow_artifact_context(
         try:
             yield artifact_dir
         finally:
-            # Логируем все файлы из директории
             if artifact_dir.exists():
                 for file_path in artifact_dir.rglob("*"):
                     if file_path.is_file():
@@ -284,25 +208,9 @@ def mlflow_model_context(
     signature: Any = None,
     input_example: Any = None,
 ) -> Generator[None, None, None]:
-    """
-    Контекстный менеджер для логирования модели в MLflow.
-
-    Автоматически определяет тип модели и использует соответствующий
-    метод логирования.
-
-    Пример использования:
-        with mlflow_model_context(
-            model=my_model,
-            artifact_path="model",
-            registered_model_name="MyModel"
-        ):
-            # Модель будет залогирована при выходе из контекста
-            pass
-    """
     try:
         yield
     finally:
-        # Определяем тип модели и логируем
         model_type = type(model).__module__
 
         if "sklearn" in model_type or hasattr(model, "fit"):
@@ -341,7 +249,6 @@ def mlflow_model_context(
             except Exception as e:
                 print(f"Ошибка при логировании TensorFlow модели: {e}")
         else:
-            # Пытаемся использовать общий метод
             try:
                 mlflow.pyfunc.log_model(
                     artifact_path=artifact_path,
@@ -356,14 +263,6 @@ class MLflowTrackingContext:
     """
     Контекстный менеджер для настройки tracking URI и аутентификации.
 
-    Пример использования:
-        with MLflowTrackingContext(
-            tracking_uri="http://localhost:5000",
-            username="user",
-            password="pass"
-        ):
-            # Все операции MLflow будут использовать указанный tracking URI
-            mlflow.log_param("param1", "value1")
     """
 
     def __init__(
@@ -372,14 +271,6 @@ class MLflowTrackingContext:
         username: str | None = None,
         password: str | None = None,
     ):
-        """
-        Инициализирует контекстный менеджер для tracking URI.
-
-        Args:
-            tracking_uri: URI для MLflow tracking server
-            username: Имя пользователя для аутентификации
-            password: Пароль для аутентификации
-        """
         self.tracking_uri = tracking_uri
         self.username = username
         self.password = password
@@ -387,17 +278,15 @@ class MLflowTrackingContext:
 
     def __enter__(self) -> MLflowTrackingContext:
         """Входит в контекст и настраивает tracking URI."""
-        # Сохраняем текущий URI
+
         try:
             self._previous_uri = mlflow.get_tracking_uri()
         except Exception:
             self._previous_uri = None
 
-        # Устанавливаем новый URI
         if self.tracking_uri:
             mlflow.set_tracking_uri(self.tracking_uri)
 
-        # Настраиваем аутентификацию через переменные окружения
         if self.username:
             os.environ["MLFLOW_TRACKING_USERNAME"] = self.username
         if self.password:
@@ -406,12 +295,9 @@ class MLflowTrackingContext:
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """Выходит из контекста и восстанавливает предыдущий URI."""
-        # Восстанавливаем предыдущий URI
         if self._previous_uri:
             mlflow.set_tracking_uri(self._previous_uri)
 
-        # Очищаем переменные окружения
         if self.username:
             os.environ.pop("MLFLOW_TRACKING_USERNAME", None)
         if self.password:
