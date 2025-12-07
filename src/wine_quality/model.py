@@ -100,7 +100,7 @@ def train_model(
     return model
 
 
-@log_metrics(["accuracy", "f1"])
+@log_metrics(["accuracy", "f1_weighted"])
 def evaluate_model(
     model: RandomForestClassifier | GradientBoostingClassifier | MLPClassifier,
     X_test: pd.DataFrame,
@@ -118,7 +118,7 @@ def evaluate_model(
 
     metrics = {
         "accuracy": acc,
-        "f1": f1,
+        "f1_weighted": f1,
         "y_pred": y_pred,
         "confusion_matrix": confusion_matrix(y_test, y_pred),
     }
@@ -235,7 +235,8 @@ def run_experiment(
             ) as run:
                 mlflow_run_id = run.info.run_id
 
-                mlflow.log_metric("f1_weighted", float(metrics["f1"]))
+                mlflow.log_metric("accuracy", float(metrics["accuracy"]))
+                mlflow.log_metric("f1_weighted", float(metrics["f1_weighted"]))
 
                 kwargs = {}
                 if infer_signature and X_train is not None:
@@ -533,7 +534,7 @@ def run_experiment(
                             version = str(versions[0].version)
                             model_tags = {
                                 "accuracy": float(metrics["accuracy"]),
-                                "f1_weighted": float(metrics["f1"]),
+                                "f1_weighted": float(metrics["f1_weighted"]),
                                 "model_type": model_type.value,
                             }
                             if hasattr(model, "n_estimators"):

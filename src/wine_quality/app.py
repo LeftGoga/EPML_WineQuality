@@ -29,16 +29,29 @@ if "mlflow_initialized" not in st.session_state:
     username = os.getenv("MLFLOW_TRACKING_USERNAME")
     password = os.getenv("MLFLOW_TRACKING_PASSWORD")
 
+    from urllib.parse import urlparse, urlunparse
+
     import mlflow
 
-    mlflow.set_tracking_uri(tracking_uri)
+    # Включаем учетные данные в tracking URI, если они предоставлены
+    final_tracking_uri = tracking_uri
+    if username and password:
+        parsed = urlparse(tracking_uri)
+        netloc = f"{username}:{password}@{parsed.hostname}"
+        if parsed.port:
+            netloc += f":{parsed.port}"
+        final_tracking_uri = urlunparse(
+            (parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment)
+        )
+
+    mlflow.set_tracking_uri(final_tracking_uri)
     if username:
         os.environ["MLFLOW_TRACKING_USERNAME"] = username
     if password:
         os.environ["MLFLOW_TRACKING_PASSWORD"] = password
 
     st.session_state["mlflow_initialized"] = True
-    st.session_state["mlflow_tracking_uri"] = tracking_uri
+    st.session_state["mlflow_tracking_uri"] = final_tracking_uri
 
 st.set_page_config(page_title="Wine Quality Analyzer", layout="wide")
 
@@ -257,7 +270,7 @@ elif page == "Обучение модели":
             st.subheader("Метрики модели")
             st.write(f"Тип модели: **{model_type_str.replace('_', ' ').title()}**")
             st.write(f"Accuracy: {metrics['accuracy']:.4f}")
-            st.write(f"F1-score: {metrics['f1']:.4f}")
+            st.write(f"F1-score: {metrics['f1_weighted']:.4f}")
 
             st.subheader("Classification Report")
             st.text(classification_report(y_test, metrics["y_pred"]))

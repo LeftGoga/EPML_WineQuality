@@ -9,6 +9,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse, urlunparse
 
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -284,9 +285,24 @@ class MLflowTrackingContext:
         except Exception:
             self._previous_uri = None
 
-        if self.tracking_uri:
-            mlflow.set_tracking_uri(self.tracking_uri)
+        # Формируем tracking URI с учетными данными, если они предоставлены
+        final_tracking_uri = self.tracking_uri
+        if self.tracking_uri and self.username and self.password:
+            # Парсим URI и добавляем учетные данные
 
+            parsed = urlparse(self.tracking_uri)
+            # Создаем новый URI с учетными данными в формате http://user:pass@host:port
+            netloc = f"{self.username}:{self.password}@{parsed.hostname}"
+            if parsed.port:
+                netloc += f":{parsed.port}"
+            final_tracking_uri = urlunparse(
+                (parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment)
+            )
+
+        if final_tracking_uri:
+            mlflow.set_tracking_uri(final_tracking_uri)
+
+        # Также устанавливаем переменные окружения для совместимости
         if self.username:
             os.environ["MLFLOW_TRACKING_USERNAME"] = self.username
         if self.password:
