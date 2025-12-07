@@ -99,7 +99,11 @@ def parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = parse_args()
 
-    mlflow.set_tracking_uri("http://127.0.0.1:5000")
+    # Используем переменную окружения или значение по умолчанию
+    import os
+
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
+    mlflow.set_tracking_uri(tracking_uri)
     df = load_data()
     print(df.head())
     plot_quality_distribution(df)
