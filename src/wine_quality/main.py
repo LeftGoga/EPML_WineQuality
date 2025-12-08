@@ -1,9 +1,12 @@
-import argparse
 import os
 
+import hydra
 import mlflow
-from config import MLFLOW_EXPERIMENT_NAME
+from config import BASE_DIR
+from config_schema import AppConfig
 from features import engineer_features, scale_features
+from mlflow.tracking import MlflowClient
+from mlflow_context import MLflowTrackingContext
 from mlflow_utils import (
     compare_runs,
     export_runs_to_csv,
@@ -12,117 +15,57 @@ from mlflow_utils import (
     search_runs,
 )
 from model import ModelType, run_experiment
+from omegaconf import DictConfig, OmegaConf
 from utils import plot_correlation_heatmap, plot_feature_importances, plot_quality_distribution
 
 from data import create_target, get_features_and_target, load_data, split_data
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Обучение модели для предсказания качества вина")
-    parser.add_argument(
-        "--model-type",
-        type=str,
-        default="boosting",
-        choices=["random_forest", "boosting", "mlp"],
-        help="Тип модели для обучения (по умолчанию: boosting)",
-    )
-    parser.add_argument(
-        "--rf-n-estimators",
-        type=int,
-        default=None,
-        help="Количество деревьев для RandomForest",
-    )
-    parser.add_argument(
-        "--rf-max-depth",
-        type=int,
-        default=None,
-        help="Максимальная глубина для RandomForest",
-    )
-    parser.add_argument(
-        "--boosting-n-estimators",
-        type=int,
-        default=None,
-        help="Количество деревьев для Boosting",
-    )
-    parser.add_argument(
-        "--boosting-max-depth",
-        type=int,
-        default=None,
-        help="Максимальная глубина для Boosting",
-    )
-    parser.add_argument(
-        "--boosting-learning-rate",
-        type=float,
-        default=None,
-        help="Скорость обучения для Boosting",
-    )
-    parser.add_argument(
-        "--mlp-hidden-layer-sizes",
-        type=str,
-        default=None,
-        help="Размеры скрытых слоев для MLP (формат: '100,50')",
-    )
-    parser.add_argument(
-        "--mlp-max-iter",
-        type=int,
-        default=None,
-        help="Максимальное количество итераций для MLP",
-    )
-    parser.add_argument(
-        "--random-state",
-        type=int,
-        default=None,
-        help="Случайное состояние для воспроизводимости",
-    )
-    parser.add_argument(
-        "--experiment-name",
-        type=str,
-        default=None,
-        help="Имя эксперимента в MLflow",
-    )
-    parser.add_argument(
-        "--register-model-name",
-        type=str,
-        default=None,
-        help="Имя модели для регистрации в MLflow",
-    )
-    parser.add_argument(
-        "--no-mlflow",
-        action="store_true",
-        help="Отключить логирование в MLflow",
-    )
-    parser.add_argument(
-        "--no-save",
-        action="store_true",
-        help="Не сохранять модель локально",
-    )
-    parser.add_argument(
-        "--analyze-experiments",
-        action="store_true",
-        help="Показать анализ экспериментов после обучения",
-    )
-    parser.add_argument(
-        "--export-comparison",
-        type=str,
-        default=None,
-        help="Экспортировать сравнение экспериментов в CSV файл",
-    )
-    return parser.parse_args()
+@hydra.main(
+    version_base=None,
+    config_path=str(BASE_DIR / "conf"),
+    config_name="config",
+)
+def main(cfg: DictConfig) -> None:
+    """
+    Главная функция для обучения модели предсказания качества вина.
+    Использует Hydra для управления конфигурацией и Pydantic для валидации.
+    """
+    # Применяем переопределения из env, если они есть (до валидации)
+    env_cfg = OmegaConf.select(cfg, "env", default=None)
+    if env_cfg is not None:
+        env_dict = OmegaConf.to_container(env_cfg, resolve=True)
+        if isinstance(env_dict, dict):
+            for key, value in env_dict.items():
+                if hasattr(cfg, key):
+                    OmegaConf.set(cfg, key, value)
+            print("✓ Применены настройки окружения")
 
+    # Валидация конфигурации с помощью Pydantic
+    try:
+        # Преобразуем OmegaConf в словарь и валидируем
+        cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+        # Удаляем env из словаря перед валидацией, если он есть
+        if "env" in cfg_dict and cfg_dict["env"] is None:
+            del cfg_dict["env"]
+        validated_cfg = AppConfig(**cfg_dict)
+        print("✓ Конфигурация успешно валидирована с помощью Pydantic")
 
-if __name__ == "__main__":
-    args = parse_args()
+        # Проверка полноты конфигурации модели
+        if not validated_cfg.model_completeness():
+            print("⚠ Предупреждение: конфигурация модели может быть неполной")
+    except Exception as e:
+        print(f"✗ Ошибка валидации конфигурации: {e}")
+        raise
 
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
     username = os.getenv("MLFLOW_TRACKING_USERNAME")
     password = os.getenv("MLFLOW_TRACKING_PASSWORD")
 
-    from mlflow_context import MLflowTrackingContext
-
     with MLflowTrackingContext(tracking_uri=tracking_uri, username=username, password=password):
-        if not args.no_mlflow:
+        if not cfg.no_mlflow:
             try:
-                experiments = mlflow.search_experiments(max_results=1)
+                mlflow.search_experiments(max_results=1)
                 print(f"✓ Подключение к MLflow успешно: {tracking_uri}")
                 if username:
                     print(f"  Используется аутентификация: {username}")
@@ -131,26 +74,55 @@ if __name__ == "__main__":
                 print(f"  Tracking URI: {tracking_uri}")
                 print("  Продолжаем без логирования в MLflow...")
 
+        # Загрузка и подготовка данных
         df = load_data()
         print(df.head())
         plot_quality_distribution(df)
-        df = create_target(df)
+        df = create_target(df, threshold=cfg.data.quality_threshold)
         df = engineer_features(df)
 
         X, y = get_features_and_target(df)
 
-        X_train, X_test, y_train, y_test = split_data(X, y)
-        X_train_sc, X_test_sc, scaler = scale_features(X_train, X_test)
+        X_train, X_test, y_train, y_test = split_data(
+            X, y, test_size=cfg.data.test_size, random_state=cfg.random_state
+        )
+        X_train_sc, X_test_sc, _scaler = scale_features(X_train, X_test)
 
+        # Подготовка параметров модели в зависимости от типа
+        model_type = ModelType(cfg.model_type)
+
+        # Обработка experiment_name и register_model_name с учетом null значений
+        experiment_name = (
+            cfg.experiment_name if cfg.experiment_name is not None else cfg.mlflow.experiment_name
+        )
+        register_model_name = (
+            cfg.register_model_name
+            if cfg.register_model_name is not None
+            else f"Wine{model_type.value.title()}"
+        )
+
+        # Извлечение параметров модели из конфига
+        # Используем OmegaConf для безопасного доступа к параметрам
+        rf_n_estimators = None
+        rf_max_depth = None
+        boosting_n_estimators = None
+        boosting_max_depth = None
+        boosting_learning_rate = None
         mlp_hidden_layer_sizes = None
-        if args.mlp_hidden_layer_sizes:
-            mlp_hidden_layer_sizes = tuple(
-                int(x.strip()) for x in args.mlp_hidden_layer_sizes.split(",")
-            )
+        mlp_max_iter = None
 
-        model_type = ModelType(args.model_type)
-        experiment_name = args.experiment_name or MLFLOW_EXPERIMENT_NAME
-        register_model_name = args.register_model_name or f"Wine{model_type.value.title()}"
+        if model_type == ModelType.RANDOM_FOREST:
+            rf_n_estimators = OmegaConf.select(cfg.model, "n_estimators", default=None)
+            rf_max_depth = OmegaConf.select(cfg.model, "max_depth", default=None)
+        elif model_type == ModelType.BOOSTING:
+            boosting_n_estimators = OmegaConf.select(cfg.model, "n_estimators", default=None)
+            boosting_max_depth = OmegaConf.select(cfg.model, "max_depth", default=None)
+            boosting_learning_rate = OmegaConf.select(cfg.model, "learning_rate", default=None)
+        elif model_type == ModelType.MLP:
+            hidden_sizes = OmegaConf.select(cfg.model, "hidden_layer_sizes", default=None)
+            if hidden_sizes is not None:
+                mlp_hidden_layer_sizes = tuple(hidden_sizes)
+            mlp_max_iter = OmegaConf.select(cfg.model, "max_iter", default=None)
 
         res = run_experiment(
             X_train_sc,
@@ -158,24 +130,22 @@ if __name__ == "__main__":
             X_test=X_test_sc,
             y_test=y_test,
             model_type=model_type,
-            rf_n_estimators=args.rf_n_estimators,
-            rf_max_depth=args.rf_max_depth,
-            boosting_n_estimators=args.boosting_n_estimators,
-            boosting_max_depth=args.boosting_max_depth,
-            boosting_learning_rate=args.boosting_learning_rate,
+            rf_n_estimators=rf_n_estimators,
+            rf_max_depth=rf_max_depth,
+            boosting_n_estimators=boosting_n_estimators,
+            boosting_max_depth=boosting_max_depth,
+            boosting_learning_rate=boosting_learning_rate,
             mlp_hidden_layer_sizes=mlp_hidden_layer_sizes,
-            mlp_max_iter=args.mlp_max_iter,
-            random_state=args.random_state,
-            use_mlflow=not args.no_mlflow,
+            mlp_max_iter=mlp_max_iter,
+            random_state=cfg.random_state,
+            use_mlflow=not cfg.no_mlflow,
             experiment_name=experiment_name,
-            model_artifact_path="model",
-            save_local=not args.no_save,
+            model_artifact_path=cfg.mlflow.model_artifact_path,
+            save_local=not cfg.no_save,
             register_model_name=register_model_name,
-            log_artifacts=True,
+            log_artifacts=cfg.mlflow.log_artifacts,
             df_for_plots=df.drop(columns=["quality", "good_quality"], errors="ignore"),
         )
-        from mlflow.tracking import MlflowClient
-
         client = MlflowClient()
         try:
             registered_models = client.search_registered_models()
@@ -196,7 +166,6 @@ if __name__ == "__main__":
             print("Error querying registry:", str(e))
 
         model = res["model"]
-        metrics = res["metrics"]
         mlflow_run_id = res.get("mlflow_run_id")
         if mlflow_run_id:
             print(f"MLflow run id: {mlflow_run_id}")
@@ -209,7 +178,7 @@ if __name__ == "__main__":
         plot_correlation_heatmap(df.drop(columns=["quality", "good_quality"]))
         plot_feature_importances(model, X.columns.tolist())
 
-        if args.analyze_experiments and mlflow_run_id:
+        if cfg.analyze_experiments and mlflow_run_id:
             print("\n" + "=" * 80)
             print("АНАЛИЗ ЭКСПЕРИМЕНТОВ")
             print("=" * 80)
@@ -254,23 +223,27 @@ if __name__ == "__main__":
                             f"accuracy={acc:.4f}, f1={f1:.4f}, model={model_t}"
                         )
 
-                    if args.export_comparison:
-                        comparison_df = compare_runs(
+                    if cfg.export_comparison:
+                        compare_runs(
                             runs[:10],
                             metric_names=["accuracy", "f1"],
                             param_names=["model_type", "n_estimators", "max_depth"],
                         )
                         export_runs_to_csv(
                             runs[:10],
-                            args.export_comparison,
+                            cfg.export_comparison,
                             metric_names=["accuracy", "f1"],
                             param_names=["model_type", "n_estimators", "max_depth"],
                         )
                         print(
-                            f"\n  Сравнение экспериментов экспортировано в {args.export_comparison}"
+                            f"\n  Сравнение экспериментов экспортировано в {cfg.export_comparison}"
                         )
 
             except Exception as e:
                 print(f"\n  Ошибка при анализе экспериментов: {e}")
 
             print("=" * 80)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,4 @@
+# @package model
+
+n_estimators: 200
+max_depth: 3  # null означает без ограничения глубины

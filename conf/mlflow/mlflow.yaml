@@ -1,0 +1,5 @@
+# @package mlflow
+
+experiment_name: "wine_quality_experiments"
+model_artifact_path: "model"
+log_artifacts: true
