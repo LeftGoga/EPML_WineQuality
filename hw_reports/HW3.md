@@ -146,7 +146,7 @@ class MLflowTrackingContext:
 ![alt text](../pics/experiments.png)
 
 
-![alt text](image-1.png)
+![alt text](../pics/compare_experiments.png)
 
 ![alt text](../pics/run.png)
 ### b) Настройка логирования метрик, параметров и артефактов
