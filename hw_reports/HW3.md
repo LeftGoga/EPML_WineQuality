@@ -1,0 +1,419 @@
+# Отчет по проделанной работе: Интеграция MLflow
+
+## 1. Настройка выбранного инструмента (4 балла)
+
+### a) Установка и настройка MLflow
+
+Выбранный инструмент: **MLflow** - платформа для управления жизненным циклом машинного обучения.
+
+MLflow установлен через Docker Compose, что обеспечивает изолированное окружение и простоту развертывания.
+
+#### Dockerfile для MLflow сервера
+
+Создан отдельный Dockerfile (`Dockerfile.mlflow`) для MLflow сервера:
+
+```dockerfile
+FROM ghcr.io/mlflow/mlflow:v3.7.0
+
+RUN pip install --no-cache-dir psycopg2-binary flask-wtf && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN pip install mlflow[auth]
+```
+
+### b) Настройка базы данных и облачного хранилища
+
+Настроена PostgreSQL база данных для хранения метаданных экспериментов и Docker volume для артефактов.
+
+#### Конфигурация в docker-compose.yaml:
+
+```yaml
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mlflow_postgres
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - mlflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlflow_server
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://mlflow:mlflow@postgres:5432/mlflow
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+      --app-name basic-auth
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+      - ./basic_auth.ini:/mlflow/basic_auth.ini
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow@postgres:5432/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+      - MLFLOW_FLASK_SERVER_SECRET_KEY=your_super_secret_key
+      - MLFLOW_AUTH_CONFIG_PATH=/mlflow/basic_auth.ini
+
+volumes:
+  mlflow_postgres_data:
+  mlflow_artifacts:
+```
+
+### c) Создание проекта и экспериментов
+
+Создана система автоматического создания экспериментов через контекстный менеджер `MLflowExperimentContext`:
+
+```python
+class MLflowExperimentContext:
+    def __init__(
+        self,
+        experiment_name: str,
+        create_if_not_exists: bool = True,
+        tags: dict[str, str] | None = None,
+    ):
+        # Автоматически создает эксперимент, если его нет
+        # Восстанавливает удаленные эксперименты
+        # Устанавливает теги для экспериментов
+```
+
+**Основной эксперимент проекта:** `wine_quality_experiments` (определен в `config.py`)
+
+### d) Настройка аутентификации и доступа
+
+Настроена базовая HTTP аутентификация через конфигурационный файл `basic_auth.ini`:
+
+```ini
+[mlflow]
+database_uri = postgresql://mlflow:mlflow@postgres:5432/mlflow
+
+default_permission = READ
+
+admin_username = admin
+admin_password = password1234567890
+default_admin_username = admin
+default_admin_password = password1234567890
+
+authorization_function = mlflow.server.auth:authenticate_request_basic_auth
+```
+
+**Интеграция аутентификации в код:**
+
+Создан контекстный менеджер `MLflowTrackingContext` для управления подключением с аутентификацией:
+
+```python
+class MLflowTrackingContext:
+    def __init__(
+        self,
+        tracking_uri: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ):
+```
+
+**Переменные окружения для аутентификации:**
+- `MLFLOW_TRACKING_URI` - URI MLflow сервера
+- `MLFLOW_TRACKING_USERNAME` - имя пользователя
+- `MLFLOW_TRACKING_PASSWORD` - пароль
+
+---
+
+## 2. Проведение экспериментов (4 балла)
+
+### a) Проведение 15+ экспериментов с разными алгоритмами
+
+Реализована функция `run_experiment()` в `model.py`
+
+![alt text](../pics/experiments.png)
+
+
+![alt text](../pics/compare_experiments.png)
+
+![alt text](../pics/run.png)
+### b) Настройка логирования метрик, параметров и артефактов
+
+#### Логирование параметров
+
+Параметры логируются автоматически через декоратор `@log_params` и контекстный менеджер `MLflowRunContext`:
+
+```python
+@log_params
+def train_model(
+    model_type: str | ModelType,
+    rf_n_estimators: int | None = None,
+    rf_max_depth: int | None = None,
+):
+    pass
+```
+
+**Логируемые параметры:**
+- Тип модели (`model_type`)
+- Гиперпараметры модели (n_estimators, max_depth, learning_rate и т.д.)
+- Random state
+- Версия Python и платформа (автоматически через `MLflowRunContext`)
+
+#### Логирование метрик
+
+Метрики логируются через декоратор `@log_metrics`:
+
+```python
+@log_metrics(["accuracy", "f1"])
+def evaluate_model(model, X_test, y_test):
+    return {"accuracy": 0.95, "f1": 0.92}
+```
+
+**Логируемые метрики:**
+- `accuracy` - точность классификации
+- `f1` - F1-score (weighted)
+- `f1_weighted` - дополнительная метрика F1
+- `execution_time_seconds` - время выполнения (автоматически через `@log_execution_time`)
+
+#### Логирование артефактов
+
+Артефакты логируются через контекстный менеджер `mlflow_artifact_context` и напрямую в функции `run_experiment()`:
+
+**Типы логируемых артефактов:**
+1. **Модели** - через `mlflow.sklearn.log_model()`
+2. **Графики важности признаков** - `feature_importances.png`
+3. **Матрицы корреляций** - `correlation_heatmap.png`
+4. **Другие визуализации** - через `mlflow.log_artifact()`
+
+**Пример логирования артефактов:**
+
+```python
+# Логирование модели
+mlflow.sklearn.log_model(
+    sk_model=model,
+    artifact_path="model",
+    signature=signature
+)
+
+# Логирование графиков
+mlflow.log_artifact("plots/feature_importances.png", artifact_path="plots")
+mlflow.log_artifact("plots/correlation_heatmap.png", artifact_path="plots")
+```
+
+![alt text](../pics/artifacts.png)
+### c) Создание системы сравнения экспериментов
+
+Создана функция `compare_runs()` в модуле `mlflow_utils.py` для сравнения экспериментов:
+
+```python
+def compare_runs(
+    runs: list[Run],
+    metric_names: list[str] | None = None,
+    param_names: list[str] | None = None,
+) -> pd.DataFrame:
+    """
+    Сравнивает runs и возвращает DataFrame с метриками и параметрами.
+    """
+```
+
+**Дополнительные утилиты для сравнения:**
+
+```python
+# Получение лучших runs по метрике
+from mlflow_utils import get_best_runs
+
+best_runs = get_best_runs(runs, "accuracy", ascending=False, top_k=5)
+
+# Получение сводки по эксперименту
+from mlflow_utils import get_experiment_summary
+
+summary = get_experiment_summary(experiment_id)
+# Возвращает: количество runs, средние/мин/макс метрики, стандартное отклонение
+```
+
+### d) Настройка фильтрации и поиска экспериментов
+
+Реализованы функции для фильтрации и поиска в модуле `mlflow_utils.py`:
+
+#### Поиск runs
+
+```python
+def search_runs(
+    experiment_ids: list[str] | None = None,
+    filter_string: str | None = None,
+    run_view_type: int = 1,
+    max_results: int = 1000,
+    order_by: list[str] | None = None,
+) -> list[Run]:
+```
+
+#### Фильтрация по метрикам
+
+```python
+def filter_runs_by_metrics(
+    runs: list[Run],
+    metric_filters: dict[str, tuple[float, float] | float],
+) -> list[Run]:
+```
+
+#### Поиск экспериментов
+
+```python
+def search_experiments(
+    filter_string: str | None = None,
+    max_results: int = 1000,
+) -> list[Experiment]:
+```
+
+
+## 3. Интеграция с кодом (2 балла)
+
+### a) Интеграция MLflow в Python код
+
+MLflow интегрирован в основные модули проекта:
+
+#### Интеграция в `model.py`
+
+Функция `run_experiment()` полностью интегрирована с MLflow:
+
+```python
+def run_experiment(
+    X_train, y_train, X_test, y_test,
+    model_type: str | ModelType = ModelType.BOOSTING,
+    use_mlflow: bool = True,
+    experiment_name: str | None = None,
+    register_model_name: str | None = None,
+    log_artifacts: bool = True,
+    # ... другие параметры
+):
+    # Автоматическое логирование через декораторы
+    model = train_model(...)  # @log_params, @log_execution_time
+    metrics = evaluate_model(...)  # @log_metrics
+
+    if use_mlflow:
+        with MLflowExperimentContext(experiment_name):
+            with MLflowRunContext(...):
+                # Логирование модели, метрик, артефактов
+                mlflow.sklearn.log_model(...)
+                mlflow.log_metrics(...)
+                mlflow.log_artifacts(...)
+```
+
+#### Интеграция в `main.py`
+
+Командная строка поддерживает работу с MLflow:
+
+```python
+# Поддержка аргументов командной строки
+parser.add_argument("--experiment-name", help="Имя эксперимента в MLflow")
+parser.add_argument("--register-model", help="Имя модели для регистрации")
+parser.add_argument("--no-mlflow", action="store_true", help="Отключить MLflow")
+parser.add_argument("--analyze-experiments", action="store_true", help="Анализ экспериментов")
+```
+
+### b) Создание декораторов для автоматического логирования
+
+Создан модуль `mlflow_decorators.py` с набором декораторов:
+
+#### 1. `@log_params` - логирование параметров функции
+
+```python
+@log_params
+def train_model(n_estimators=100, max_depth=5):
+    # Все параметры автоматически логируются
+    pass
+```
+
+#### 2. `@log_metrics` - логирование метрик из возвращаемого значения
+
+```python
+@log_metrics(["accuracy", "f1_score"])
+def evaluate_model():
+    return {"accuracy": 0.95, "f1_score": 0.92}
+```
+
+### c) Настройка контекстных менеджеров
+
+Создан модуль `mlflow_context.py` с контекстными менеджерами:
+
+#### 1. `MLflowExperimentContext` - управление экспериментами
+
+```python
+with MLflowExperimentContext("my_experiment", tags={"team": "ml"}):
+    # Эксперимент автоматически создан или выбран
+    mlflow.log_param("param1", "value1")
+```
+
+#### 2. `MLflowRunContext` - управление runs
+
+```python
+with MLflowRunContext(
+    experiment_name="my_experiment",
+    run_name="test_run",
+    params={"n_estimators": 100},
+    tags={"framework": "sklearn"}
+) as run:
+    mlflow.log_metric("accuracy", 0.95)
+    # Run автоматически завершается при выходе из контекста
+```
+
+**Функциональность:**
+- Автоматическое создание и завершение run
+- Логирование параметров при входе
+- Логирование системной информации (Python версия, платформа)
+- Установка тегов
+
+#### 3. `mlflow_artifact_context` - логирование артефактов
+
+```python
+with mlflow_artifact_context("plots", "visualizations") as artifact_dir:
+    plot_path = artifact_dir / "plot.png"
+    plt.savefig(plot_path)
+    # Файл автоматически залогируется при выходе из контекста
+```
+
+#### 4. `mlflow_model_context` - логирование моделей
+
+```python
+with mlflow_model_context(
+    model=my_model,
+    artifact_path="model",
+    registered_model_name="MyModel"
+):
+    # Модель автоматически залогируется при выходе из контекста
+    pass
+```
+
+#### 5. `MLflowTrackingContext` - управление подключением
+
+```python
+with MLflowTrackingContext(
+    tracking_uri="http://mlflow:5000",
+    username="admin",
+    password="password"
+):
+    mlflow.log_metric("f1_weighted", 0.95)
+```
+
+### d) Создание утилит для работы с экспериментами
+
+Создан модуль `mlflow_utils.py` с набором утилит:
+
+![alt text](../pics/search.png)
+---
+
+## 4. Отчет о проделанной работе (2 балла)
+
+Данный отчет является финальной версией
