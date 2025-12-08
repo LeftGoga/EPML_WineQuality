@@ -212,6 +212,7 @@ mlflow.log_artifact("plots/feature_importances.png", artifact_path="plots")
 mlflow.log_artifact("plots/correlation_heatmap.png", artifact_path="plots")
 ```
 
+![alt text](../pics/artifacts.png)
 ### c) Создание системы сравнения экспериментов
 
 Создана функция `compare_runs()` в модуле `mlflow_utils.py` для сравнения экспериментов:
