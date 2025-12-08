@@ -1,15 +1,7 @@
-"""
-Декораторы для автоматического логирования в MLflow.
-
-Этот модуль предоставляет декораторы для автоматизации логирования
-параметров, метрик, времени выполнения и артефактов в MLflow.
-"""
-
 from __future__ import annotations
 
 import functools
 import inspect
-import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypeVar, cast
@@ -83,14 +75,6 @@ def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
     Если metric_names указан, логирует только указанные метрики.
     Если metric_names не указан, пытается логировать все метрики из словаря.
 
-    Пример использования:
-        @log_metrics(["accuracy", "f1_score"])
-        def evaluate_model():
-            return {"accuracy": 0.95, "f1_score": 0.92}
-
-        @log_metrics()
-        def evaluate_model():
-            return {"accuracy": 0.95, "f1_score": 0.92}
     """
 
     def decorator(func: F) -> F:
@@ -125,55 +109,12 @@ def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
     return decorator
 
 
-def log_execution_time(func: F) -> F:
-    """
-    Декоратор для логирования времени выполнения функции.
-
-    Пример использования:
-        @log_execution_time
-        def train_model():
-
-            pass
-    """
-
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        start_time = time.time()
-        try:
-            result = func(*args, **kwargs)
-            execution_time = time.time() - start_time
-            try:
-                active_run = mlflow.active_run()
-                if active_run is not None:
-                    mlflow.log_metric("execution_time_seconds", execution_time)
-            except Exception:  # nosec B110
-                pass
-            return result
-        except Exception as e:
-            execution_time = time.time() - start_time
-            try:
-                active_run = mlflow.active_run()
-                if active_run is not None:
-                    mlflow.log_metric("execution_time_seconds", execution_time)
-                    mlflow.log_param("error", str(e))
-            except Exception:  # nosec B110
-                pass
-            raise
-
-    return cast(F, wrapper)
-
-
 def log_artifacts(artifact_path: str | None = None) -> Callable[[F], F]:
     """
     Декоратор для автоматического логирования артефактов из возвращаемого значения.
 
     Если функция возвращает путь к файлу или директории, он автоматически логируется.
 
-    Пример использования:
-        @log_artifacts("plots")
-        def create_plot():
-            plt.savefig("plot.png")
-            return "plot.png"
     """
 
     def decorator(func: F) -> F:
@@ -219,12 +160,6 @@ def mlflow_run(
     Декоратор для автоматического создания MLflow run.
 
     Обёртывает выполнение функции в MLflow run.
-
-    Пример использования:
-        @mlflow_run(experiment_name="my_experiment", run_name="test_run")
-        def train_model():
-            mlflow.log_param("param1", "value1")
-            mlflow.log_metric("accuracy", 0.95)
     """
 
     def decorator(func: F) -> F:
@@ -237,81 +172,5 @@ def mlflow_run(
                 return func(*args, **kwargs)
 
         return cast(F, wrapper)
-
-    return decorator
-
-
-def log_model_artifact(
-    artifact_path: str = "model",
-    registered_model_name: str | None = None,
-) -> Callable[[F], F]:
-    """
-    Декоратор для автоматического логирования модели из возвращаемого значения.
-
-    Пример использования:
-        @log_model_artifact(artifact_path="model", registered_model_name="MyModel")
-        def train_model():
-            model = RandomForestClassifier()
-            model.fit(X, y)
-            return model
-    """
-
-    def decorator(func: F) -> F:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            result = func(*args, **kwargs)
-
-            if result is not None:
-                model_type = type(result).__module__
-
-                try:
-                    if "sklearn" in model_type or hasattr(result, "fit"):
-                        mlflow.sklearn.log_model(
-                            sk_model=result,
-                            artifact_path=artifact_path,
-                            registered_model_name=registered_model_name,
-                        )
-                    elif "pytorch" in model_type or "torch" in model_type:
-                        mlflow.pytorch.log_model(
-                            pytorch_model=result,
-                            artifact_path=artifact_path,
-                            registered_model_name=registered_model_name,
-                        )
-                    elif "tensorflow" in model_type or "keras" in model_type:
-                        mlflow.tensorflow.log_model(
-                            model=result,
-                            artifact_path=artifact_path,
-                            registered_model_name=registered_model_name,
-                        )
-                except Exception as e:
-                    print(f"Предупреждение: не удалось залогировать модель: {e}")
-
-            return result
-
-        return cast(F, wrapper)
-
-    return decorator
-
-
-def combine_decorators(
-    *decorators: Callable[[F], F],
-) -> Callable[[F], F]:
-    """
-    Утилита для комбинирования нескольких декораторов.
-
-    Пример использования:
-        @combine_decorators(
-            log_params,
-            log_execution_time,
-            log_metrics(["accuracy", "f1_score"])
-        )
-        def train_and_evaluate():
-            pass
-    """
-
-    def decorator(func: F) -> F:
-        for dec in reversed(decorators):
-            func = dec(func)
-        return func
 
     return decorator

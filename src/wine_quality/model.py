@@ -31,7 +31,7 @@ from mlflow_context import (
     MLflowExperimentContext,
     MLflowRunContext,
 )
-from mlflow_decorators import log_execution_time, log_metrics, log_params
+from mlflow_decorators import log_metrics, log_params
 from mlflow_registry import log_metadata, set_model_version_tags, transition_model_stage
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
@@ -54,7 +54,6 @@ class ModelType(str, Enum):
 
 
 @log_params
-@log_execution_time
 def train_model(
     model_type: str | ModelType,
     X_train: pd.DataFrame,

@@ -58,10 +58,23 @@ class MLflowExperimentContext:
                 try:
                     experiment = mlflow.get_experiment_by_name(self.experiment_name)
                     if experiment:
-                        experiment_id = experiment.experiment_id
-                        if self.tags:
-                            for key, value in self.tags.items():
-                                client.set_experiment_tag(experiment_id, key, value)
+                        if experiment.lifecycle_stage == "deleted":
+                            try:
+                                client.restore_experiment(experiment.experiment_id)
+                                print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
+                                experiment_id = experiment.experiment_id
+                            except Exception:
+                                new_name = f"{self.experiment_name}_{int(time.time())}"
+                                experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
+                                print(
+                                    f"Создан новый эксперимент '{new_name}' (не удалось восстановить '{self.experiment_name}')"
+                                )
+                                self.experiment_name = new_name
+                        else:
+                            experiment_id = experiment.experiment_id
+                            if self.tags:
+                                for key, value in self.tags.items():
+                                    client.set_experiment_tag(experiment_id, key, value)
                     else:
                         experiment_id = mlflow.create_experiment(
                             self.experiment_name, tags=self.tags
@@ -104,17 +117,38 @@ class MLflowExperimentContext:
                 else:
                     experiment = mlflow.get_experiment_by_name(self.experiment_name)
                     if experiment:
-                        experiment_id = experiment.experiment_id
-                        if self.tags:
-                            client = MlflowClient()
-                            for key, value in self.tags.items():
-                                client.set_experiment_tag(experiment_id, key, value)
+                        # Проверяем lifecycle_stage перед использованием
+                        if experiment.lifecycle_stage == "deleted":
+                            try:
+                                client = MlflowClient()
+                                client.restore_experiment(experiment.experiment_id)
+                                print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
+                                experiment_id = experiment.experiment_id
+                            except Exception:
+                                new_name = f"{self.experiment_name}_{int(time.time())}"
+                                experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
+                                print(
+                                    f"Создан новый эксперимент '{new_name}' (не удалось восстановить '{self.experiment_name}')"
+                                )
+                                self.experiment_name = new_name
+                        else:
+                            experiment_id = experiment.experiment_id
+                            if self.tags:
+                                client = MlflowClient()
+                                for key, value in self.tags.items():
+                                    client.set_experiment_tag(experiment_id, key, value)
                     else:
                         raise
         else:
             experiment = mlflow.get_experiment_by_name(self.experiment_name)
             if not experiment:
                 raise ValueError(f"Эксперимент '{self.experiment_name}' не существует")
+            # Проверяем, не удален ли эксперимент
+            if experiment.lifecycle_stage == "deleted":
+                raise ValueError(
+                    f"Эксперимент '{self.experiment_name}' был удален. "
+                    "Используйте create_if_not_exists=True для автоматического восстановления."
+                )
             experiment_id = experiment.experiment_id
 
         mlflow.set_experiment(self.experiment_name)
@@ -131,13 +165,6 @@ class MLflowRunContext:
     Автоматически создаёт и завершает run, логирует параметры и метрики.
 
     Пример использования:
-        with MLflowRunContext(
-            experiment_name="my_experiment",
-            run_name="test_run",
-            params={"param1": "value1"},
-            tags={"tag1": "value1"}
-        ) as run:
-            mlflow.log_metric("accuracy", 0.95)
     """
 
     def __init__(
@@ -159,6 +186,16 @@ class MLflowRunContext:
         """Входит в контекст и создаёт run."""
 
         if self.experiment_name:
+            experiment = mlflow.get_experiment_by_name(self.experiment_name)
+            if experiment and experiment.lifecycle_stage == "deleted":
+                try:
+                    client = MlflowClient()
+                    client.restore_experiment(experiment.experiment_id)
+                    print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
+                except Exception as e:
+                    raise ValueError(
+                        f"Эксперимент '{self.experiment_name}' был удален и не может быть восстановлен: {e}"
+                    ) from e
             mlflow.set_experiment(self.experiment_name)
 
         self._run = mlflow.start_run(run_name=self.run_name, tags=self.tags)

@@ -1,9 +1,3 @@
-"""
-Утилиты для работы с экспериментами MLflow.
-
-Этот модуль предоставляет функции для поиска, фильтрации и сравнения экспериментов.
-"""
-
 from __future__ import annotations
 
 from datetime import datetime

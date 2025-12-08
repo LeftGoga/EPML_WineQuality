@@ -79,11 +79,6 @@ volumes:
   mlflow_artifacts:
 ```
 
-**Особенности настройки:**
-- PostgreSQL используется как backend store для метаданных экспериментов
-- Docker volume `mlflow_artifacts` используется для хранения артефактов (модели, графики, метрики)
-- Настроены healthchecks для обеспечения готовности сервисов перед запуском зависимых контейнеров
-
 ### c) Создание проекта и экспериментов
 
 Создана система автоматического создания экспериментов через контекстный менеджер `MLflowExperimentContext`:
@@ -99,16 +94,6 @@ class MLflowExperimentContext:
         # Автоматически создает эксперимент, если его нет
         # Восстанавливает удаленные эксперименты
         # Устанавливает теги для экспериментов
-```
-
-**Использование:**
-
-```python
-from mlflow_context import MLflowExperimentContext
-
-with MLflowExperimentContext("wine_quality_experiments", tags={"team": "ml"}):
-    # Эксперимент автоматически создан или выбран
-    mlflow.log_param("param1", "value1")
 ```
 
 **Основной эксперимент проекта:** `wine_quality_experiments` (определен в `config.py`)
@@ -143,21 +128,6 @@ class MLflowTrackingContext:
         username: str | None = None,
         password: str | None = None,
     ):
-        # Настраивает tracking URI и credentials
-```
-
-**Использование:**
-
-```python
-from mlflow_context import MLflowTrackingContext
-
-with MLflowTrackingContext(
-    tracking_uri="http://mlflow:5000",
-    username="admin",
-    password="password1234567890"
-):
-    # Работа с MLflow с аутентификацией
-    mlflow.log_metric("accuracy", 0.95)
 ```
 
 **Переменные окружения для аутентификации:**
@@ -175,7 +145,6 @@ with MLflowTrackingContext(
 
 ![alt text](../pics/experiments.png)
 
-![alt text](image.png)
 
 ![alt text](image-1.png)
 
@@ -192,9 +161,7 @@ def train_model(
     model_type: str | ModelType,
     rf_n_estimators: int | None = None,
     rf_max_depth: int | None = None,
-    # ... другие параметры
 ):
-    # Все параметры автоматически логируются в MLflow
     pass
 ```
 
@@ -211,7 +178,6 @@ def train_model(
 ```python
 @log_metrics(["accuracy", "f1"])
 def evaluate_model(model, X_test, y_test):
-    # Метрики автоматически логируются в MLflow
     return {"accuracy": 0.95, "f1": 0.92}
 ```
 
@@ -261,33 +227,6 @@ def compare_runs(
     """
 ```
 
-**Использование:**
-
-```python
-from mlflow_utils import search_runs, compare_runs
-
-# Поиск всех runs в эксперименте
-runs = search_runs(
-    experiment_ids=[experiment_id],
-    order_by=["metrics.accuracy DESC"]
-)
-
-# Сравнение runs
-comparison_df = compare_runs(
-    runs,
-    metric_names=["accuracy", "f1"],
-    param_names=["model_type", "rf_n_estimators", "rf_max_depth"]
-)
-
-print(comparison_df)
-```
-
-**Результат:** DataFrame с колонками:
-- `run_id`, `experiment_id`, `run_name`, `status`, `start_time`, `end_time`
-- `metric_accuracy`, `metric_f1` и другие метрики
-- `param_model_type`, `param_rf_n_estimators` и другие параметры
-- Теги экспериментов
-
 **Дополнительные утилиты для сравнения:**
 
 ```python
@@ -319,29 +258,6 @@ def search_runs(
 ) -> list[Run]:
 ```
 
-**Примеры использования:**
-
-```python
-from mlflow_utils import search_runs
-
-# Поиск runs с accuracy > 0.9
-runs = search_runs(
-    filter_string="metrics.accuracy > 0.9",
-    order_by=["metrics.accuracy DESC"]
-)
-
-# Поиск runs по параметрам
-runs = search_runs(
-    filter_string="params.model_type = 'random_forest' AND params.rf_n_estimators = '200'"
-)
-
-# Поиск в конкретном эксперименте
-runs = search_runs(
-    experiment_ids=["123"],
-    filter_string="metrics.f1 > 0.85"
-)
-```
-
 #### Фильтрация по метрикам
 
 ```python
@@ -349,43 +265,6 @@ def filter_runs_by_metrics(
     runs: list[Run],
     metric_filters: dict[str, tuple[float, float] | float],
 ) -> list[Run]:
-```
-
-**Пример:**
-
-```python
-from mlflow_utils import filter_runs_by_metrics
-
-filtered = filter_runs_by_metrics(
-    runs,
-    {
-        "accuracy": (0.8, 1.0),  # 0.8 <= accuracy <= 1.0
-        "f1": 0.9,  # f1 >= 0.9
-    }
-)
-```
-
-#### Фильтрация по параметрам
-
-```python
-def filter_runs_by_params(
-    runs: list[Run],
-    param_filters: dict[str, str | list[str]],
-) -> list[Run]:
-```
-
-**Пример:**
-
-```python
-from mlflow_utils import filter_runs_by_params
-
-filtered = filter_runs_by_params(
-    runs,
-    {
-        "model_type": "random_forest",
-        "rf_n_estimators": ["100", "200"],  # n_estimators = 100 или 200
-    }
-)
 ```
 
 #### Поиск экспериментов
@@ -397,15 +276,6 @@ def search_experiments(
 ) -> list[Experiment]:
 ```
 
-**Пример:**
-
-```python
-from mlflow_utils import search_experiments
-
-experiments = search_experiments(filter_string="name LIKE '%wine%'")
-```
-
----
 
 ## 3. Интеграция с кодом (2 балла)
 
@@ -473,26 +343,6 @@ def evaluate_model():
     return {"accuracy": 0.95, "f1_score": 0.92}
 ```
 
-#### 3. `@log_execution_time` - логирование времени выполнения
-
-```python
-@log_execution_time
-def train_model():
-    pass
-```
-
-#### 4. `@combine_decorators` - комбинирование декораторов
-
-```python
-@combine_decorators(
-    log_params,
-    log_execution_time,
-    log_metrics(["accuracy", "f1_score"])
-)
-def train_and_evaluate():
-    pass
-```
-
 ### c) Настройка контекстных менеджеров
 
 Создан модуль `mlflow_context.py` с контекстными менеджерами:
@@ -504,11 +354,6 @@ with MLflowExperimentContext("my_experiment", tags={"team": "ml"}):
     # Эксперимент автоматически создан или выбран
     mlflow.log_param("param1", "value1")
 ```
-
-**Функциональность:**
-- Автоматическое создание эксперимента, если его нет
-- Восстановление удаленных экспериментов
-- Установка тегов для экспериментов
 
 #### 2. `MLflowRunContext` - управление runs
 
@@ -550,12 +395,6 @@ with mlflow_model_context(
     pass
 ```
 
-**Поддержка различных типов моделей:**
-- scikit-learn модели
-- PyTorch модели
-- TensorFlow/Keras модели
-- Произвольные Python модели (через pyfunc)
-
 #### 5. `MLflowTrackingContext` - управление подключением
 
 ```python
@@ -564,55 +403,13 @@ with MLflowTrackingContext(
     username="admin",
     password="password"
 ):
-    # Настроено подключение к MLflow с аутентификацией
     mlflow.log_metric("f1_weighted", 0.95)
-    # При выходе из контекста настройки восстанавливаются
 ```
 
 ### d) Создание утилит для работы с экспериментами
 
 Создан модуль `mlflow_utils.py` с набором утилит:
 
-#### Основные функции:
-
-1. **`search_experiments()`** - поиск экспериментов по фильтру
-2. **`search_runs()`** - поиск runs с фильтрацией и сортировкой
-3. **`filter_runs_by_metrics()`** - фильтрация runs по метрикам
-4. **`filter_runs_by_params()`** - фильтрация runs по параметрам
-5. **`compare_runs()`** - сравнение runs и создание DataFrame
-6. **`get_best_runs()`** - получение лучших runs по метрике
-7. **`get_experiment_summary()`** - сводка по эксперименту (статистика метрик)
-8. **`export_runs_to_csv()`** - экспорт runs в CSV
-9. **`delete_runs()`** - удаление runs
-10. **`restore_runs()`** - восстановление удаленных runs
-
-**Пример использования утилит:**
-
-```python
-from mlflow_utils import (
-    search_runs,
-    compare_runs,
-    get_best_runs,
-    get_experiment_summary,
-    export_runs_to_csv
-)
-
-runs = search_runs(
-    experiment_ids=[experiment_id],
-    filter_string="metrics.accuracy > 0.9",
-    order_by=["metrics.accuracy DESC"]
-)
-
-df = compare_runs(runs, metric_names=["accuracy", "f1"])
-
-# Лучшие runs
-best = get_best_runs(runs, "accuracy", top_k=5)
-
-# Сводка
-summary = get_experiment_summary(experiment_id)
-
-
-```
 ![alt text](../pics/search.png)
 ---
 
