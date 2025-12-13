@@ -89,27 +89,24 @@ class AppConfig(BaseModel):
     )
     register_model_name: str | None = Field(default=None, description="Имя модели для регистрации")
     export_comparison: str | None = Field(default=None, description="Путь для экспорта сравнения")
-
-    # Вложенные конфигурации
     model: ModelConfig
     data: DataConfig
     mlflow: MLflowConfig
     paths: PathsConfig
 
-    # Опциональное окружение (может отсутствовать)
     env: dict[str, Any] | None = Field(default=None, description="Настройки окружения")
 
     @field_validator("model_type")
     @classmethod
     def validate_model_type(cls, v: str) -> str:
-        """Валидация типа модели."""
+        # Валидация
         allowed = {"random_forest", "boosting", "mlp"}
         if v not in allowed:
             raise ValueError(f"model_type должен быть одним из: {allowed}")
         return v
 
     def model_completeness(self) -> bool:
-        """Проверка полноты конфигурации модели в зависимости от типа."""
+        # Полнота конфигурации
         if self.model_type == "random_forest":
             return self.model.n_estimators is not None
         elif self.model_type == "boosting":

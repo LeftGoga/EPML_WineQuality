@@ -4,6 +4,7 @@ import hydra
 import mlflow
 from config import BASE_DIR
 from config_schema import AppConfig
+from dotenv import load_dotenv
 from features import engineer_features, scale_features
 from mlflow.tracking import MlflowClient
 from mlflow_context import MLflowTrackingContext
@@ -20,42 +21,38 @@ from utils import plot_correlation_heatmap, plot_feature_importances, plot_quali
 
 from data import create_target, get_features_and_target, load_data, split_data
 
+load_dotenv()
+
 
 @hydra.main(
-    version_base=None,
     config_path=str(BASE_DIR / "conf"),
     config_name="config",
 )
 def main(cfg: DictConfig) -> None:
     """
     Главная функция для обучения модели предсказания качества вина.
-    Использует Hydra для управления конфигурацией и Pydantic для валидации.
     """
-    # Применяем переопределения из env, если они есть (до валидации)
     env_cfg = OmegaConf.select(cfg, "env", default=None)
     if env_cfg is not None:
         env_dict = OmegaConf.to_container(env_cfg, resolve=True)
         if isinstance(env_dict, dict):
             for key, value in env_dict.items():
                 if hasattr(cfg, key):
-                    OmegaConf.set(cfg, key, value)
-            print("✓ Применены настройки окружения")
+                    cfg[key] = value
+            print("Применены настройки окружения")
 
-    # Валидация конфигурации с помощью Pydantic
     try:
-        # Преобразуем OmegaConf в словарь и валидируем
         cfg_dict = OmegaConf.to_container(cfg, resolve=True)
-        # Удаляем env из словаря перед валидацией, если он есть
+
         if "env" in cfg_dict and cfg_dict["env"] is None:
             del cfg_dict["env"]
         validated_cfg = AppConfig(**cfg_dict)
         print("✓ Конфигурация успешно валидирована с помощью Pydantic")
 
-        # Проверка полноты конфигурации модели
         if not validated_cfg.model_completeness():
-            print("⚠ Предупреждение: конфигурация модели может быть неполной")
+            print("Предупреждение: конфигурация модели может быть неполной")
     except Exception as e:
-        print(f"✗ Ошибка валидации конфигурации: {e}")
+        print(f"Ошибка валидации конфигурации: {e}")
         raise
 
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
@@ -66,15 +63,14 @@ def main(cfg: DictConfig) -> None:
         if not cfg.no_mlflow:
             try:
                 mlflow.search_experiments(max_results=1)
-                print(f"✓ Подключение к MLflow успешно: {tracking_uri}")
+                print(f"Подключение к MLflow успешно: {tracking_uri}")
                 if username:
                     print(f"  Используется аутентификация: {username}")
             except Exception as e:
-                print(f"⚠ Предупреждение: не удалось подключиться к MLflow: {e}")
+                print(f"Предупреждение: не удалось подключиться к MLflow: {e}")
                 print(f"  Tracking URI: {tracking_uri}")
                 print("  Продолжаем без логирования в MLflow...")
 
-        # Загрузка и подготовка данных
         df = load_data()
         print(df.head())
         plot_quality_distribution(df)
@@ -87,11 +83,8 @@ def main(cfg: DictConfig) -> None:
             X, y, test_size=cfg.data.test_size, random_state=cfg.random_state
         )
         X_train_sc, X_test_sc, _scaler = scale_features(X_train, X_test)
-
-        # Подготовка параметров модели в зависимости от типа
         model_type = ModelType(cfg.model_type)
 
-        # Обработка experiment_name и register_model_name с учетом null значений
         experiment_name = (
             cfg.experiment_name if cfg.experiment_name is not None else cfg.mlflow.experiment_name
         )
@@ -101,8 +94,6 @@ def main(cfg: DictConfig) -> None:
             else f"Wine{model_type.value.title()}"
         )
 
-        # Извлечение параметров модели из конфига
-        # Используем OmegaConf для безопасного доступа к параметрам
         rf_n_estimators = None
         rf_max_depth = None
         boosting_n_estimators = None

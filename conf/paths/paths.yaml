@@ -1,11 +1,11 @@
 # @package paths
 
-# Относительные пути от корня проекта
+
 plots_dir: "plots"
 models_dir: "models"
 data_dir: "data"
 
-# Имена файлов
+
 plot_quality_filename: "quality_distribution.png"
 plot_corr_filename: "correlation_heatmap.png"
 plot_features_filename: "feature_importances.png"
