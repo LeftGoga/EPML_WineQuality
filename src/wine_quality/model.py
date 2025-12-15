@@ -14,7 +14,12 @@ import matplotlib.pyplot as plt
 import mlflow
 import pandas as pd
 import seaborn as sns
-from config import (
+from mlflow.tracking import MlflowClient
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
+from sklearn.neural_network import MLPClassifier
+
+from .config import (
     BOOSTING_LEARNING_RATE,
     BOOSTING_MAX_DEPTH,
     BOOSTING_N_ESTIMATORS,
@@ -26,16 +31,12 @@ from config import (
     RF_MAX_DEPTH,
     RF_N_ESTIMATORS,
 )
-from mlflow.tracking import MlflowClient
-from mlflow_context import (
+from .mlflow_context import (
     MLflowExperimentContext,
     MLflowRunContext,
 )
-from mlflow_decorators import log_metrics, log_params
-from mlflow_registry import log_metadata, set_model_version_tags, transition_model_stage
-from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
-from sklearn.neural_network import MLPClassifier
+from .mlflow_decorators import log_metrics, log_params
+from .mlflow_registry import log_metadata, set_model_version_tags, transition_model_stage
 
 try:
     import mlflow.sklearn

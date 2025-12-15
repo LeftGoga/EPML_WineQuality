@@ -103,3 +103,32 @@ reinstall:
 
 mlflow:
 	mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./artifacts --host 127.0.0.1 --port 5000
+
+# Luigi пайплайн
+luigi:
+	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --local-scheduler
+
+luigi-rf:
+	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --model-type=random_forest --local-scheduler
+
+luigi-boosting:
+	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --model-type=boosting --local-scheduler
+
+luigi-mlp:
+	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --model-type=mlp --local-scheduler
+
+luigi-no-mlflow:
+	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --no-mlflow --local-scheduler
+
+luigi-visualizer:
+	poetry run luigid --background --logdir ./logs/luigi
+
+luigi-clean:
+ifeq ($(OS),Windows_NT)
+	@if exist data\features.csv (del /q data\features.csv)
+	@if exist models\wine_rf.pkl (del /q models\wine_rf.pkl)
+	@echo "Luigi выходные файлы удалены"
+else
+	rm -f data/features.csv models/wine_rf.pkl
+	@echo "Luigi выходные файлы удалены"
+endif
