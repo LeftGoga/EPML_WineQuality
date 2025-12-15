@@ -16,8 +16,8 @@ stages:
       size: 141741
     - path: src/wine_quality/main.py
       hash: md5
-      md5: 226a45c41935a38989d1d8bf517395a8
-      size: 10363
+      md5: 8fb20bed0ff8854b39c8d531f1f1e17b
+      size: 10603
   features:
     cmd: make features
     deps:
