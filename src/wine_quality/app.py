@@ -33,7 +33,6 @@ if "mlflow_initialized" not in st.session_state:
 
     import mlflow
 
-    # Включаем учетные данные в tracking URI, если они предоставлены
     final_tracking_uri = tracking_uri
     if username and password:
         parsed = urlparse(tracking_uri)

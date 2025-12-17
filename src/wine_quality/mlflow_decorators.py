@@ -27,18 +27,6 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def log_params(func: F) -> F:
-    """
-    Декоратор для автоматического логирования параметров функции в MLflow.
-
-    Логирует все аргументы функции как параметры MLflow.
-
-    Пример использования:
-        @log_params
-        def train_model(n_estimators=100, max_depth=5):
-
-            pass
-    """
-
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         sig = inspect.signature(func)
@@ -69,14 +57,6 @@ def log_params(func: F) -> F:
 
 
 def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
-    """
-    Декоратор для автоматического логирования метрик из возвращаемого значения.
-
-    Если metric_names указан, логирует только указанные метрики.
-    Если metric_names не указан, пытается логировать все метрики из словаря.
-
-    """
-
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -110,13 +90,6 @@ def log_metrics(metric_names: list[str] | None = None) -> Callable[[F], F]:
 
 
 def log_artifacts(artifact_path: str | None = None) -> Callable[[F], F]:
-    """
-    Декоратор для автоматического логирования артефактов из возвращаемого значения.
-
-    Если функция возвращает путь к файлу или директории, он автоматически логируется.
-
-    """
-
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -156,12 +129,6 @@ def mlflow_run(
     run_name: str | None = None,
     tags: dict[str, str] | None = None,
 ) -> Callable[[F], F]:
-    """
-    Декоратор для автоматического создания MLflow run.
-
-    Обёртывает выполнение функции в MLflow run.
-    """
-
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:

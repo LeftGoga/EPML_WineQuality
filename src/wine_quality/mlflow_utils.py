@@ -12,19 +12,6 @@ def search_experiments(
     filter_string: str | None = None,
     max_results: int = 1000,
 ) -> list[Experiment]:
-    """
-    Поиск экспериментов по фильтру.
-
-    Args:
-        filter_string: Строка фильтрации (например, "name = 'my_experiment'")
-        max_results: Максимальное количество результатов
-
-    Returns:
-        Список экспериментов
-
-    Пример использования:
-        experiments = search_experiments(filter_string="name LIKE '%wine%'")
-    """
     client = MlflowClient()
     try:
         experiments = client.search_experiments(
@@ -43,26 +30,6 @@ def search_runs(
     max_results: int = 1000,
     order_by: list[str] | None = None,
 ) -> list[Run]:
-    """
-    Поиск runs по фильтру.
-
-    Args:
-        experiment_ids: Список ID экспериментов для поиска
-        filter_string: Строка фильтрации (например, "metrics.accuracy > 0.9")
-        run_view_type: Тип представления (1 = ACTIVE_ONLY, 2 = DELETED_ONLY, 3 = ALL)
-        max_results: Максимальное количество результатов
-        order_by: Список полей для сортировки (например, ["metrics.accuracy DESC"])
-
-    Returns:
-        Список runs
-
-    Пример использования:
-        runs = search_runs(
-            experiment_ids=["123"],
-            filter_string="metrics.accuracy > 0.9",
-            order_by=["metrics.accuracy DESC"]
-        )
-    """
     client = MlflowClient()
     try:
         runs = client.search_runs(
@@ -82,27 +49,6 @@ def filter_runs_by_metrics(
     runs: list[Run],
     metric_filters: dict[str, tuple[float, float] | float],
 ) -> list[Run]:
-    """
-    Фильтрует runs по метрикам.
-
-    Args:
-        runs: Список runs для фильтрации
-        metric_filters: Словарь с фильтрами метрик.
-                       Ключ - имя метрики, значение - либо одно число (>=),
-                       либо кортеж (min, max) для диапазона
-
-    Returns:
-        Отфильтрованный список runs
-
-    Пример использования:
-        filtered = filter_runs_by_metrics(
-            runs,
-            {
-                "accuracy": (0.8, 1.0),
-                "f1_score": 0.9,
-            }
-        )
-    """
     filtered_runs = []
     for run in runs:
         match = True
@@ -132,27 +78,6 @@ def filter_runs_by_params(
     runs: list[Run],
     param_filters: dict[str, str | list[str]],
 ) -> list[Run]:
-    """
-    Фильтрует runs по параметрам.
-
-    Args:
-        runs: Список runs для фильтрации
-        param_filters: Словарь с фильтрами параметров.
-                      Ключ - имя параметра, значение - либо строка (точное совпадение),
-                      либо список строк (любое из значений)
-
-    Returns:
-        Отфильтрованный список runs
-
-    Пример использования:
-        filtered = filter_runs_by_params(
-            runs,
-            {
-                "model_type": "random_forest",
-                "n_estimators": ["100", "200"],
-            }
-        )
-    """
     filtered_runs = []
     for run in runs:
         match = True
@@ -182,25 +107,6 @@ def compare_runs(
     metric_names: list[str] | None = None,
     param_names: list[str] | None = None,
 ) -> pd.DataFrame:
-    """
-    Сравнивает runs и возвращает DataFrame с метриками и параметрами.
-
-    Args:
-        runs: Список runs для сравнения
-        metric_names: Список имен метрик для включения (если None, включаются все)
-        param_names: Список имен параметров для включения (если None, включаются все)
-
-    Returns:
-        DataFrame с колонками: run_id, experiment_id, status, start_time,
-        и всеми метриками и параметрами
-
-    Пример использования:
-        df = compare_runs(
-            runs,
-            metric_names=["accuracy", "f1_score"],
-            param_names=["model_type", "n_estimators"]
-        )
-    """
     data = []
     for run in runs:
         row: dict[str, Any] = {
@@ -242,22 +148,6 @@ def get_best_runs(
     ascending: bool = False,
     top_k: int = 5,
 ) -> list[Run]:
-    """
-    Возвращает лучшие runs по указанной метрике.
-
-    Args:
-        runs: Список runs
-        metric_name: Имя метрики для сортировки
-        ascending: Сортировать по возрастанию (False = по убыванию)
-        top_k: Количество лучших runs для возврата
-
-    Returns:
-        Список лучших runs
-
-    Пример использования:
-        best_runs = get_best_runs(runs, "accuracy", ascending=False, top_k=5)
-    """
-
     runs_with_metric = [run for run in runs if metric_name in run.data.metrics]
 
     sorted_runs = sorted(
@@ -270,18 +160,6 @@ def get_best_runs(
 
 
 def get_experiment_summary(experiment_id: str) -> dict[str, Any]:
-    """
-    Получает сводку по эксперименту.
-
-    Args:
-        experiment_id: ID эксперимента
-
-    Returns:
-        Словарь со сводкой: количество runs, лучшие метрики, средние метрики и т.д.
-
-    Пример использования:
-        summary = get_experiment_summary("123")
-    """
     client = MlflowClient()
     runs = client.search_runs(experiment_ids=[experiment_id], max_results=1000)
 
@@ -336,18 +214,6 @@ def export_runs_to_csv(
     metric_names: list[str] | None = None,
     param_names: list[str] | None = None,
 ) -> None:
-    """
-    Экспортирует runs в CSV файл.
-
-    Args:
-        runs: Список runs для экспорта
-        output_path: Путь к выходному CSV файлу
-        metric_names: Список имен метрик для включения
-        param_names: Список имен параметров для включения
-
-    Пример использования:
-        export_runs_to_csv(runs, "experiments.csv")
-    """
     df = compare_runs(runs, metric_names=metric_names, param_names=param_names)
     df.to_csv(output_path, index=False)
     print(f"Runs экспортированы в {output_path}")
@@ -357,16 +223,6 @@ def delete_runs(
     run_ids: list[str],
     experiment_id: str | None = None,
 ) -> None:
-    """
-    Удаляет указанные runs.
-
-    Args:
-        run_ids: Список ID runs для удаления
-        experiment_id: ID эксперимента (опционально, для проверки)
-
-    Пример использования:
-        delete_runs(["run_id_1", "run_id_2"])
-    """
     client = MlflowClient()
     for run_id in run_ids:
         try:
@@ -385,15 +241,6 @@ def delete_runs(
 
 
 def restore_runs(run_ids: list[str]) -> None:
-    """
-    Восстанавливает удалённые runs.
-
-    Args:
-        run_ids: Список ID runs для восстановления
-
-    Пример использования:
-        restore_runs(["run_id_1", "run_id_2"])
-    """
     client = MlflowClient()
     for run_id in run_ids:
         try:

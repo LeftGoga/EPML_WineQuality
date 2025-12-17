@@ -1,0 +1,22 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - model: random_forest
+  - data: data
+  - mlflow: mlflow
+  - paths: paths
+  - pipeline: pipeline_luigi
+  - env: null
+
+model_type: random_forest
+random_state: 42
+
+no_mlflow: false
+no_save: false
+analyze_experiments: false
+
+experiment_name: null
+register_model_name: null
+export_comparison: null
+no_notifications: false

@@ -13,7 +13,6 @@ from mlflow.tracking import MlflowClient
 
 
 def ensure_experiment(name: str) -> None:
-    """Создаёт эксперимент, если не существует, и устанавливает его текущим."""
     experiments = [e.name for e in mlflow.list_experiments()]
     if name not in experiments:
         mlflow.create_experiment(name)
@@ -21,7 +20,6 @@ def ensure_experiment(name: str) -> None:
 
 
 def log_metadata(metadata: dict[str, Any], artifact_path: str = "metadata") -> None:
-    """Логирует JSON-метаданные как артефакт текущего run-а."""
     with tempfile.TemporaryDirectory() as td:
         meta_path = os.path.join(td, "metadata.json")
         with open(meta_path, "w", encoding="utf-8") as f:
@@ -37,15 +35,6 @@ def register_model_from_run(
     timeout_sec: int = 300,
     client: MlflowClient | None = None,
 ) -> str:
-    """
-    Создаёт Model Version, используя существующий артефакт внутри run (`runs:/<run_id>/<artifact_path>`).
-
-    ВАЖНО: эту функцию НЕ стоит вызывать одновременно с логированием модели через
-    `mlflow.sklearn.log_model(..., registered_model_name=...)`, потому что это приводит
-    к созданию дублирующих версий (источники вида `models:/m-...`).
-
-    Возвращает номер версии (строка).
-    """
     client = client or MlflowClient()
     model_uri = f"runs:/{run_id}/{artifact_path}"
 
@@ -81,9 +70,6 @@ def register_model_from_run(
 def transition_model_stage(
     model_name: str, version: str, stage: str, archive_existing_versions: bool = True
 ) -> None:
-    """
-    Переводит указанную версию в stage. Обёртка над MlflowClient.
-    """
     client = MlflowClient()
 
     client.transition_model_version_stage(
@@ -95,7 +81,6 @@ def transition_model_stage(
 
 
 def set_model_version_tags(model_name: str, version: str, tags: dict[str, Any]) -> None:
-    """Устанавливает теги (metadata) на модельную версию."""
     client = MlflowClient()
     for k, v in tags.items():
         client.set_model_version_tag(name=model_name, version=version, key=str(k), value=str(v))
@@ -109,9 +94,6 @@ def list_model_versions(model_name: str) -> list[ModelVersion]:
 
 
 def compare_versions(model_name: str, versions: list[str]) -> dict[str, dict[str, Any]]:
-    """
-    Сравнивает указанные версии модели по метрикам, параметрам и тегам.
-    """
     client = MlflowClient()
     result: dict[str, dict[str, Any]] = {}
     for v in versions:
@@ -132,10 +114,6 @@ def compare_versions(model_name: str, versions: list[str]) -> dict[str, dict[str
 
 
 def find_duplicate_versions(model_name: str) -> list[dict[str, Any]]:
-    """Находит возможные дубликаты (same run_id but different source types).
-
-    Возвращает список словарей с полями version, run_id, source, current_stage.
-    """
     client = MlflowClient()
     duplicates = []
 
@@ -157,12 +135,6 @@ def find_duplicate_versions(model_name: str) -> list[dict[str, Any]]:
 
 
 def cleanup_duplicate_versions(model_name: str, dry_run: bool = True) -> list[dict[str, Any]]:
-    """
-    Удаляет версии с source типа `models:/m-...`, оставляя версии с `runs:/...` если они есть.
-    Внимание: удаление необратимо. По умолчанию dry_run=True — функция только пройдёт и вернёт, что бы сделала.
-
-    Возвращает список действий (версия, action).
-    """
     client = MlflowClient()
     actions = []
 

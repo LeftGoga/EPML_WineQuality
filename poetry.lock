@@ -246,18 +246,6 @@ files = [
 vine = ">=5.0.0,<6.0.0"
 
 [[package]]
-name = "aniso8601"
-version = "7.0.0"
-description = "A library for parsing ISO 8601 strings."
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "aniso8601-7.0.0-py2.py3-none-any.whl", hash = "sha256:d10a4bf949f619f719b227ef5386e31f49a2b6d453004b21f02661ccc8670c7b"},
-    {file = "aniso8601-7.0.0.tar.gz", hash = "sha256:513d2b6637b7853806ae79ffaca6f3e8754bdd547048f5ccc1420aec4b714f1e"},
-]
-
-[[package]]
 name = "annotated-doc"
 version = "0.0.4"
 description = "Document parameters, class attributes, return types, and variables inline, with Annotated."
@@ -1881,64 +1869,61 @@ full = ["numpy", "ply"]
 
 [[package]]
 name = "graphene"
-version = "2.1.9"
+version = "1.4.1"
 description = "GraphQL Framework for Python"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "graphene-2.1.9-py2.py3-none-any.whl", hash = "sha256:3d446eb1237c551052bc31155cf1a3a607053e4f58c9172b83a1b597beaa0868"},
-    {file = "graphene-2.1.9.tar.gz", hash = "sha256:b9f2850e064eebfee9a3ef4a1f8aa0742848d97652173ab44c82cc8a62b9ed93"},
+    {file = "graphene-1.4.1.tar.gz", hash = "sha256:36134e026ec987514b240b57e3b6a995d6aed0fc5dece0567e77d5aed0ad0ece"},
 ]
 
 [package.dependencies]
-aniso8601 = ">=3,<=7"
-graphql-core = ">=2.1,<3"
-graphql-relay = ">=2,<3"
-six = ">=1.10.0,<2"
+graphql-core = ">=1.1"
+graphql-relay = ">=0.4.5"
+promise = ">=2.0"
+six = ">=1.10.0"
 
 [package.extras]
 django = ["graphene-django"]
 sqlalchemy = ["graphene-sqlalchemy"]
-test = ["coveralls", "fastdiff (==0.2.0)", "iso8601", "mock", "promise", "pytest", "pytest-benchmark", "pytest-cov", "pytest-mock", "pytz", "six", "snapshottest"]
+test = ["coveralls", "iso8601", "mock", "pytest (>=2.7.2)", "pytest-benchmark", "pytest-cov", "pytz", "six", "snapshottest"]
 
 [[package]]
 name = "graphql-core"
-version = "2.3.2"
+version = "1.1"
 description = "GraphQL implementation for Python"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "graphql-core-2.3.2.tar.gz", hash = "sha256:aac46a9ac524c9855910c14c48fc5d60474def7f99fd10245e76608eba7af746"},
-    {file = "graphql_core-2.3.2-py2.py3-none-any.whl", hash = "sha256:44c9bac4514e5e30c5a595fac8e3c76c1975cae14db215e8174c7fe995825bad"},
+    {file = "graphql-core-1.1.tar.gz", hash = "sha256:63bb8593aeeadb0a53e14207b910027fe51158d017927fad87326dac806185ee"},
 ]
 
 [package.dependencies]
-promise = ">=2.3,<3"
-rx = ">=1.6,<2"
+promise = ">=2.0"
 six = ">=1.10.0"
 
 [package.extras]
-gevent = ["gevent (>=1.1)"]
-test = ["coveralls (==1.11.1)", "cython (==0.29.17)", "gevent (==1.5.0)", "pyannotate (==1.2.0)", "pytest (==4.6.10)", "pytest-benchmark (==3.2.3)", "pytest-cov (==2.8.1)", "pytest-django (==3.9.0)", "pytest-mock (==2.0.0)", "six (==1.14.0)"]
+gevent = ["gevent (==1.1rc1)"]
+test = ["coveralls", "gevent (==1.1rc1)", "pytest (==3.0.2)", "pytest-benchmark (==3.0.0)", "pytest-cov (==2.3.1)", "pytest-django (==2.9.1)", "pytest-mock (==1.2)", "six (>=1.10.0)"]
 
 [[package]]
 name = "graphql-relay"
-version = "2.0.1"
+version = "0.5.0"
 description = "Relay implementation for Python"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "graphql-relay-2.0.1.tar.gz", hash = "sha256:870b6b5304123a38a0b215a79eace021acce5a466bf40cd39fa18cb8528afabb"},
-    {file = "graphql_relay-2.0.1-py3-none-any.whl", hash = "sha256:ac514cb86db9a43014d7e73511d521137ac12cf0101b2eaa5f0a3da2e10d913d"},
+    {file = "graphql-relay-0.5.0.tar.gz", hash = "sha256:1c9bce36612d26ab08dd25d45b192722a9c7b6af3cef7ff83a3f087540ca2216"},
+    {file = "graphql_relay-0.5.0-py3-none-any.whl", hash = "sha256:67b35f036325b625c717b24930bfa87229181e5cdbf4b07713b845dacb8fed14"},
 ]
 
 [package.dependencies]
-graphql-core = ">=2.2,<3"
-promise = ">=2.2,<3"
-six = ">=1.12"
+graphql-core = ">=0.5.0,<2"
+promise = ">=0.4.0"
+six = ">=1.10.0"
 
 [[package]]
 name = "greenlet"
@@ -4652,17 +4637,6 @@ files = [
 ]
 
 [[package]]
-name = "rx"
-version = "1.6.3"
-description = "Reactive Extensions (Rx) for Python"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "Rx-1.6.3.tar.gz", hash = "sha256:ca71b65d0fc0603a3b5cfaa9e33f5ba81e4aae10a58491133595088d7734b2da"},
-]
-
-[[package]]
 name = "scikit-learn"
 version = "1.7.2"
 description = "A set of python modules for machine learning and data mining"
@@ -5693,4 +5667,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "9a346ae19569e90066dd1db602188b36262e9589a7eb3fd203d4ee3e1c7a60e5"
+content-hash = "eb9cdcdeecf8f439501782f6641ad905b138e77095fcf0fe2c64655af69ec80c"

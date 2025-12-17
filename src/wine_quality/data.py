@@ -15,11 +15,6 @@ except ImportError:
 
 
 def load_data(url: str | None = None) -> pd.DataFrame:
-    """
-    Загружает датасет вина (red wine) из DATA_URL (по умолчанию)
-    Возвращает DataFrame c колонками, где пробелы заменены на '_'.
-    Если url is None, данные загружаются в папку data/ в корне проекта, если файл отсутствует.
-    """
     data_dir = BASE_DIR / "data"
     data_dir.mkdir(exist_ok=True)
     local_path = data_dir / "winequality-red.csv"
@@ -36,11 +31,6 @@ def load_data(url: str | None = None) -> pd.DataFrame:
 
 
 def create_target(df: pd.DataFrame, threshold: int = 7) -> pd.DataFrame:
-    """
-    Добавляет колонку 'good_quality' — бинарная метка (1,0)
-    по порогу качества (quality >= threshold).
-    Возвращает копию DataFrame.
-    """
     df = df.copy()
     df["good_quality"] = (df["quality"] >= threshold).astype(int)
     return df

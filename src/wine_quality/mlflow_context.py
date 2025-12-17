@@ -117,7 +117,6 @@ class MLflowExperimentContext:
                 else:
                     experiment = mlflow.get_experiment_by_name(self.experiment_name)
                     if experiment:
-                        # Проверяем lifecycle_stage перед использованием
                         if experiment.lifecycle_stage == "deleted":
                             try:
                                 client = MlflowClient()
@@ -143,7 +142,6 @@ class MLflowExperimentContext:
             experiment = mlflow.get_experiment_by_name(self.experiment_name)
             if not experiment:
                 raise ValueError(f"Эксперимент '{self.experiment_name}' не существует")
-            # Проверяем, не удален ли эксперимент
             if experiment.lifecycle_stage == "deleted":
                 raise ValueError(
                     f"Эксперимент '{self.experiment_name}' был удален. "
@@ -159,14 +157,6 @@ class MLflowExperimentContext:
 
 
 class MLflowRunContext:
-    """
-    Контекстный менеджер для работы с MLflow run.
-
-    Автоматически создаёт и завершает run, логирует параметры и метрики.
-
-    Пример использования:
-    """
-
     def __init__(
         self,
         experiment_name: str | None = None,
@@ -183,8 +173,6 @@ class MLflowRunContext:
         self._run = None
 
     def __enter__(self) -> mlflow.entities.Run:
-        """Входит в контекст и создаёт run."""
-
         if self.experiment_name:
             experiment = mlflow.get_experiment_by_name(self.experiment_name)
             if experiment and experiment.lifecycle_stage == "deleted":
@@ -298,11 +286,6 @@ def mlflow_model_context(
 
 
 class MLflowTrackingContext:
-    """
-    Контекстный менеджер для настройки tracking URI и аутентификации.
-
-    """
-
     def __init__(
         self,
         tracking_uri: str | None = None,
@@ -315,20 +298,14 @@ class MLflowTrackingContext:
         self._previous_uri = None
 
     def __enter__(self) -> MLflowTrackingContext:
-        """Входит в контекст и настраивает tracking URI."""
-
         try:
             self._previous_uri = mlflow.get_tracking_uri()
         except Exception:
             self._previous_uri = None
 
-        # Формируем tracking URI с учетными данными, если они предоставлены
         final_tracking_uri = self.tracking_uri
         if self.tracking_uri and self.username and self.password:
-            # Парсим URI и добавляем учетные данные
-
             parsed = urlparse(self.tracking_uri)
-            # Создаем новый URI с учетными данными в формате http://user:pass@host:port
             netloc = f"{self.username}:{self.password}@{parsed.hostname}"
             if parsed.port:
                 netloc += f":{parsed.port}"
@@ -339,7 +316,6 @@ class MLflowTrackingContext:
         if final_tracking_uri:
             mlflow.set_tracking_uri(final_tracking_uri)
 
-        # Также устанавливаем переменные окружения для совместимости
         if self.username:
             os.environ["MLFLOW_TRACKING_USERNAME"] = self.username
         if self.password:

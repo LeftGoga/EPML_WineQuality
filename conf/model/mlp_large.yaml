@@ -1,0 +1,4 @@
+# @package model
+
+hidden_layer_sizes: [200, 100, 50]
+max_iter: 1000

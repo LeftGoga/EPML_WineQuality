@@ -29,9 +29,6 @@ load_dotenv()
     config_name="config",
 )
 def main(cfg: DictConfig) -> None:
-    """
-    Главная функция для обучения модели предсказания качества вина.
-    """
     env_cfg = OmegaConf.select(cfg, "env", default=None)
     if env_cfg is not None:
         env_dict = OmegaConf.to_container(env_cfg, resolve=True)
