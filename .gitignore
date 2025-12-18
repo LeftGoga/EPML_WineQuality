@@ -130,7 +130,6 @@ artifacts/
 .pyc
 /data
 
-*.md
 
 # Models JSON reports
 models/*.json
