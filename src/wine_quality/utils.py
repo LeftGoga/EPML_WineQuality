@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import logging
+import os
+
 import matplotlib
 
 matplotlib.use("Agg")
-import os
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -13,6 +14,7 @@ from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.neural_network import MLPClassifier
 
 os.makedirs(PLOTS_DIR, exist_ok=True)
+logger = logging.getLogger(__name__)
 
 
 def plot_quality_distribution(df: pd.DataFrame, save_path: str | None = None) -> None:
@@ -27,7 +29,7 @@ def plot_quality_distribution(df: pd.DataFrame, save_path: str | None = None) ->
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
-    print(f"График сохранён: {save_path}")
+    logger.info(f"График сохранён: {save_path}")
 
 
 def plot_correlation_heatmap(df: pd.DataFrame, save_path: str | None = None) -> None:
@@ -40,7 +42,7 @@ def plot_correlation_heatmap(df: pd.DataFrame, save_path: str | None = None) -> 
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
-    print(f"График сохранён: {save_path}")
+    logger.info(f"График сохранён: {save_path}")
 
 
 def plot_feature_importances(
@@ -52,7 +54,9 @@ def plot_feature_importances(
         save_path = str(PLOT_FEATURES_PATH)
 
     if isinstance(model, MLPClassifier):
-        print("MLPClassifier не поддерживает feature_importances_, пропускаем визуализацию")
+        logger.warning(
+            "MLPClassifier не поддерживает feature_importances_, пропускаем визуализацию"
+        )
         return
 
     if not hasattr(model, "feature_importances_"):
@@ -72,4 +76,4 @@ def plot_feature_importances(
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()
-    print(f"График сохранён: {save_path}")
+    logger.info(f"График сохранён: {save_path}")

@@ -7,7 +7,7 @@ defaults:
   - mlflow: mlflow
   - paths: paths
   - pipeline: pipeline_luigi
-  - env: null
+  - env: env
 
 model_type: random_forest
 random_state: 42
@@ -20,3 +20,14 @@ experiment_name: null
 register_model_name: null
 export_comparison: null
 no_notifications: false
+
+# Добавленные настройки для уведомлений, включая email
+notifications:
+  enabled: true
+  email:
+    enabled: ${oc.env:EMAIL_NOTIFICATIONS_ENABLED, true}
+    smtp_host: ${oc.env:SMTP_HOST}
+    smtp_port: ${oc.env:SMTP_PORT}
+    smtp_user: ${oc.env:SMTP_USER}
+    smtp_password: ${oc.env:SMTP_PASSWORD}
+    recipient_email: ${oc.env:RECIPIENT_EMAIL}

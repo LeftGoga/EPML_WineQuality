@@ -8,11 +8,12 @@ from typing import Any, cast
 
 import hydra
 import luigi
+from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
 
 from .config import BASE_DIR
 from .config_schema import AppConfig
-from .luigi_pipeline import WineQualityPipeline
+from .luigi_pipeline import NotificationSystem, WineQualityPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -63,40 +64,6 @@ class PipelineMonitor:
             f.write("\n")
 
 
-class NotificationSystem:
-    """Система уведомлений о результатах выполнения."""
-
-    def __init__(self, enabled: bool = True):
-        self.enabled = enabled
-
-    def notify_success(self, message: str, metrics: dict[str, Any] | None = None) -> None:
-        """Отправляет уведомление об успешном выполнении."""
-        if not self.enabled:
-            return
-        logger.info(f"✓ УСПЕХ: {message}")
-        if metrics:
-            logger.info(f"  Метрики: {metrics}")
-
-    def notify_failure(self, message: str, error: str | None = None) -> None:
-        """Отправляет уведомление об ошибке."""
-        if not self.enabled:
-            return
-        logger.error(f"✗ ОШИБКА: {message}")
-        if error:
-            logger.error(f"  Детали: {error}")
-
-    def notify_completion(self, summary: dict[str, Any]) -> None:
-        """Отправляет итоговое уведомление."""
-        if not self.enabled:
-            return
-        logger.info("=" * 80)
-        logger.info("ИТОГИ ВЫПОЛНЕНИЯ ПАЙПЛАЙНА")
-        logger.info("=" * 80)
-        for key, value in summary.items():
-            logger.info(f"  {key}: {value}")
-        logger.info("=" * 80)
-
-
 def _prepare_model_params(model_type: str, model_config: Any) -> dict[str, str]:
     """Подготавливает параметры модели для Luigi задачи."""
     model_params = {}
@@ -129,7 +96,27 @@ def _prepare_luigi_params(validated_cfg: AppConfig, cfg: DictConfig) -> dict[str
     features_path = str(BASE_DIR / validated_cfg.paths.data_dir / "features.csv")
 
     model_params = _prepare_model_params(model_type, validated_cfg.model)
-    hydra_config_json = json.dumps(OmegaConf.to_container(cfg, resolve=True))
+
+    # Получаем параметры Hydra из текущего контекста
+    # Используем относительный путь от корня проекта (относительно точки входа)
+    hydra_config_path = "conf"
+    hydra_config_name = "config"
+    hydra_overrides = []
+
+    # Пытаемся получить overrides из текущего контекста Hydra
+    try:
+        hydra_instance = GlobalHydra.instance()
+        if hydra_instance.is_initialized():
+            hydra_cfg = hydra_instance.hydra
+            # Получаем overrides из контекста Hydra
+            if hasattr(hydra_cfg, "overrides"):
+                hydra_overrides = hydra_cfg.overrides.task_overrides
+            elif hasattr(hydra_cfg, "config_loader") and hasattr(
+                hydra_cfg.config_loader, "overrides"
+            ):
+                hydra_overrides = hydra_cfg.config_loader.overrides
+    except Exception as e:
+        logger.debug(f"Не удалось получить overrides из Hydra (это нормально): {e}")
 
     luigi_params = {
         "features_path": features_path,
@@ -141,8 +128,11 @@ def _prepare_luigi_params(validated_cfg: AppConfig, cfg: DictConfig) -> dict[str
         "use_mlflow": str(not validated_cfg.no_mlflow),
         "experiment_name": validated_cfg.mlflow.experiment_name,
         "no_mlflow": str(validated_cfg.no_mlflow),
-        "hydra_config": hydra_config_json,
+        "hydra_config_path": hydra_config_path,
+        "hydra_config_name": hydra_config_name,
+        "hydra_overrides": json.dumps(hydra_overrides) if hydra_overrides else None,
         "run_evaluation": "True",
+        "enable_notifications": str(not cfg.get("no_notifications", False)),
         **model_params,
     }
 

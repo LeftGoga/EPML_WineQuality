@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import tempfile
@@ -67,6 +68,8 @@ except Exception:
     MLFLOW_AVAILABLE = False
     infer_signature = None
 
+logger = logging.getLogger(__name__)
+
 
 class ModelType(str, Enum):
     RANDOM_FOREST = "random_forest"
@@ -129,12 +132,10 @@ def evaluate_model(
     y_pred = model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred, average="weighted")
-    print(f"Accuracy: {acc:.4f}")
-    print(f"F1-score (weighted): {f1:.4f}\n")
-    print("Classification Report:")
-    print(classification_report(y_test, y_pred))
-    print("Confusion Matrix:")
-    print(confusion_matrix(y_test, y_pred))
+    logger.info(f"Accuracy: {acc:.4f}")
+    logger.info(f"F1-score (weighted): {f1:.4f}")
+    logger.debug("Classification Report:\n%s", classification_report(y_test, y_pred))
+    logger.debug("Confusion Matrix:\n%s", confusion_matrix(y_test, y_pred))
 
     metrics = {
         "accuracy": acc,
@@ -150,7 +151,7 @@ def save_model(model: Any, path: str | None = None) -> None:
         path = str(MODEL_PATH)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     joblib.dump(model, path)
-    print(f"Модель сохранена: {path}")
+    logger.debug(f"Модель сохранена: {path}")
 
 
 def load_model(path: str | None = None) -> Any:
@@ -209,7 +210,7 @@ def run_experiment(
             client = MlflowClient()
             client.search_experiments(max_results=1)
         except Exception as e:
-            print(f"Предупреждение: проблема с подключением к MLflow: {e}")
+            logger.warning(f"Проблема с подключением к MLflow: {e}")
 
         exp_name = experiment_name or MLFLOW_EXPERIMENT_NAME
         with MLflowExperimentContext(exp_name):
@@ -279,8 +280,8 @@ def run_experiment(
 
                             mlflow.register_model(model_uri=run_uri, name=register_model_name)
                     except Exception as e:
-                        print(f"Ошибка при логировании модели: {e}")
-                        traceback.print_exc()
+                        logger.error(f"Ошибка при логировании модели: {e}")
+                        logger.debug(traceback.format_exc())
 
                 log_metadata(
                     {

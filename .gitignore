@@ -129,7 +129,7 @@ saved/
 artifacts/
 .pyc
 /data
-
+.cursorignore
 
 # Models JSON reports
 models/*.json

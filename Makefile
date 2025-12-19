@@ -104,31 +104,50 @@ reinstall:
 mlflow:
 	mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./artifacts --host 127.0.0.1 --port 5000
 
-# Luigi пайплайн
 luigi:
-	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --local-scheduler
+	poetry run python run_luigi_pipeline.py $(ARGS)
 
 luigi-rf:
-	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --model-type=random_forest --local-scheduler
+	poetry run python run_luigi_pipeline.py model_type=random_forest $(ARGS)
 
 luigi-boosting:
-	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --model-type=boosting --local-scheduler
+	poetry run python run_luigi_pipeline.py model_type=boosting $(ARGS)
 
 luigi-mlp:
-	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --model-type=mlp --local-scheduler
+	poetry run python run_luigi_pipeline.py model_type=mlp $(ARGS)
 
 luigi-no-mlflow:
-	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --no-mlflow --local-scheduler
+	poetry run python run_luigi_pipeline.py no_mlflow=true $(ARGS)
+
+luigi-fresh:
+	$(MAKE) luigi-clean
+	$(MAKE) luigi
+
+# Прямой запуск Luigi без Hydra (для совместимости)
+luigi-direct:
+	poetry run python -m luigi --module src.wine_quality.luigi_pipeline WineQualityPipeline --local-scheduler --log-level INFO
 
 luigi-visualizer:
+ifeq ($(OS),Windows_NT)
+	@if not exist logs\luigi mkdir logs\luigi
+	poetry run luigid --logdir ./logs/luigi
+else
+	@mkdir -p logs/luigi
 	poetry run luigid --background --logdir ./logs/luigi
+endif
 
 luigi-clean:
 ifeq ($(OS),Windows_NT)
 	@if exist data\features.csv (del /q data\features.csv)
-	@if exist models\wine_rf.pkl (del /q models\wine_rf.pkl)
+	@if exist data\winequality-red.csv (del /q data\winequality-red.csv)
+	@if exist models\wine_*.pkl (del /q models\wine_*.pkl)
+	@if exist models\*_metrics.json (del /q models\*_metrics.json)
+	@if exist models\*_report.json (del /q models\*_report.json)
+	@if exist outputs\evaluation_report.json (del /q outputs\evaluation_report.json)
 	@echo "Luigi выходные файлы удалены"
 else
-	rm -f data/features.csv models/wine_rf.pkl
+	rm -f data/features.csv data/winequality-red.csv
+	rm -f models/wine_*.pkl models/*_metrics.json models/*_report.json
+	rm -f outputs/evaluation_report.json
 	@echo "Luigi выходные файлы удалены"
 endif

@@ -69,7 +69,6 @@ def save_features(output_path: str | None = None) -> pd.DataFrame:
     df = create_target(df)
     df = engineer_features(df)
     df.to_csv(output_path, index=False)
-    print(f"Фичи сохранены в {output_path}")
 
     return df
 

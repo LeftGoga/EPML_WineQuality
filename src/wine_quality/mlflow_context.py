@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import platform
 import sys
@@ -13,6 +14,8 @@ from urllib.parse import urlparse, urlunparse
 
 import mlflow
 from mlflow.tracking import MlflowClient
+
+logger = logging.getLogger(__name__)
 
 try:
     import mlflow.sklearn
@@ -61,12 +64,14 @@ class MLflowExperimentContext:
                         if experiment.lifecycle_stage == "deleted":
                             try:
                                 client.restore_experiment(experiment.experiment_id)
-                                print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
+                                logger.debug(
+                                    f"Восстановлен удаленный эксперимент: {self.experiment_name}"
+                                )
                                 experiment_id = experiment.experiment_id
                             except Exception:
                                 new_name = f"{self.experiment_name}_{int(time.time())}"
                                 experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
-                                print(
+                                logger.debug(
                                     f"Создан новый эксперимент '{new_name}' (не удалось восстановить '{self.experiment_name}')"
                                 )
                                 self.experiment_name = new_name
@@ -99,18 +104,20 @@ class MLflowExperimentContext:
                         if deleted_exp:
                             client.restore_experiment(deleted_exp.experiment_id)
                             experiment_id = deleted_exp.experiment_id
-                            print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
+                            logger.debug(
+                                f"Восстановлен удаленный эксперимент: {self.experiment_name}"
+                            )
                         else:
                             new_name = f"{self.experiment_name}_{int(time.time())}"
                             experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
-                            print(
+                            logger.debug(
                                 f"Создан новый эксперимент '{new_name}' (старый '{self.experiment_name}' был удален)"
                             )
                             self.experiment_name = new_name
                     except Exception:
                         new_name = f"{self.experiment_name}_{int(time.time())}"
                         experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
-                        print(
+                        logger.debug(
                             f"Создан новый эксперимент '{new_name}' (не удалось восстановить '{self.experiment_name}')"
                         )
                         self.experiment_name = new_name
@@ -121,12 +128,14 @@ class MLflowExperimentContext:
                             try:
                                 client = MlflowClient()
                                 client.restore_experiment(experiment.experiment_id)
-                                print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
+                                logger.debug(
+                                    f"Восстановлен удаленный эксперимент: {self.experiment_name}"
+                                )
                                 experiment_id = experiment.experiment_id
                             except Exception:
                                 new_name = f"{self.experiment_name}_{int(time.time())}"
                                 experiment_id = mlflow.create_experiment(new_name, tags=self.tags)
-                                print(
+                                logger.debug(
                                     f"Создан новый эксперимент '{new_name}' (не удалось восстановить '{self.experiment_name}')"
                                 )
                                 self.experiment_name = new_name
@@ -179,7 +188,7 @@ class MLflowRunContext:
                 try:
                     client = MlflowClient()
                     client.restore_experiment(experiment.experiment_id)
-                    print(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
+                    logger.debug(f"Восстановлен удаленный эксперимент: {self.experiment_name}")
                 except Exception as e:
                     raise ValueError(
                         f"Эксперимент '{self.experiment_name}' был удален и не может быть восстановлен: {e}"
@@ -249,12 +258,14 @@ def mlflow_model_context(
                     input_example=input_example,
                 )
                 if registered_model_name:
-                    print(f"Модель {registered_model_name} успешно зарегистрирована в MLflow")
+                    logger.debug(
+                        f"Модель {registered_model_name} успешно зарегистрирована в MLflow"
+                    )
             except Exception as e:
-                print(f"Ошибка при логировании sklearn модели: {e}")
+                logger.error(f"Ошибка при логировании sklearn модели: {e}")
                 if registered_model_name:
-                    print(
-                        f"Предупреждение: модель {registered_model_name} не была зарегистрирована из-за ошибки"
+                    logger.warning(
+                        f"Модель {registered_model_name} не была зарегистрирована из-за ошибки"
                     )
         elif "pytorch" in model_type or "torch" in model_type:
             try:
@@ -264,7 +275,7 @@ def mlflow_model_context(
                     registered_model_name=registered_model_name,
                 )
             except Exception as e:
-                print(f"Ошибка при логировании PyTorch модели: {e}")
+                logger.error(f"Ошибка при логировании PyTorch модели: {e}")
         elif "tensorflow" in model_type or "keras" in model_type:
             try:
                 mlflow.tensorflow.log_model(
@@ -273,7 +284,7 @@ def mlflow_model_context(
                     registered_model_name=registered_model_name,
                 )
             except Exception as e:
-                print(f"Ошибка при логировании TensorFlow модели: {e}")
+                logger.error(f"Ошибка при логировании TensorFlow модели: {e}")
         else:
             try:
                 mlflow.pyfunc.log_model(
@@ -282,7 +293,7 @@ def mlflow_model_context(
                     registered_model_name=registered_model_name,
                 )
             except Exception as e:
-                print(f"Ошибка при логировании модели: {e}")
+                logger.error(f"Ошибка при логировании модели: {e}")
 
 
 class MLflowTrackingContext:
