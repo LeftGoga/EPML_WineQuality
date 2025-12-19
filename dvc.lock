@@ -5,8 +5,8 @@ stages:
     outs:
     - path: data/winequality-red.csv
       hash: md5
-      md5: 2daeecee174368f8a33b82c8cccae3a5
-      size: 84199
+      md5: da4a1d53785b1b5781a30160ba69edb9
+      size: 93599
   train:
     cmd: make train
     deps:
@@ -23,12 +23,12 @@ stages:
     deps:
     - path: data/winequality-red.csv
       hash: md5
-      md5: 2daeecee174368f8a33b82c8cccae3a5
-      size: 84199
+      md5: da4a1d53785b1b5781a30160ba69edb9
+      size: 93599
     - path: src/wine_quality/data.py
       hash: md5
-      md5: 786e45ba404bd233e1dd548d8e731105
-      size: 2259
+      md5: 874947efcfc1a681587d6082e639cd7b
+      size: 2199
     - path: src/wine_quality/features.py
       hash: md5
       md5: 8a7ce05f9188c9d1a323401e68a26fe9
