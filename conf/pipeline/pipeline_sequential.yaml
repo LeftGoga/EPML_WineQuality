@@ -1,0 +1,25 @@
+# @package _global_
+
+pipeline:
+  runner: luigi
+  parallel: false
+  workers: 1
+  scheduler: central
+  log_level: INFO
+
+monitoring:
+  enabled: false
+  log_dir: outputs/pipeline_logs
+
+notifications:
+  enabled: true
+  no_notifications: false
+  email:
+    enabled: true
+    # Настройки SMTP для Gmail (задаются через переменные окружения или здесь)
+    # Переменные окружения: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, RECIPIENT_EMAIL
+    smtp_host: null  # По умолчанию: smtp.gmail.com
+    smtp_port: null  # По умолчанию: 587
+    smtp_user: null  # Обязательно: email для отправки (например, leftgoga@gmail.com)
+    smtp_password: null  # Обязательно: пароль приложения Gmail (не обычный пароль!)
+    recipient_email: null  # Email получателя уведомлений

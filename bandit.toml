@@ -1,0 +1,16 @@
+
+exclude = [
+    ".venv",
+    "venv",
+    "env",
+    "tests",
+    "__pycache__",
+    "build",
+    "dist",
+    "migrations",
+]
+
+skips = [
+    "B101",
+    "B311",
+]

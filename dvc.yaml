@@ -1,0 +1,20 @@
+stages:
+  prepare:
+    cmd: make prepare
+    outs:
+      - data/winequality-red.csv
+
+  features:
+    cmd: make features
+    deps:
+      - src/wine_quality/data.py
+      - src/wine_quality/features.py
+      - data/winequality-red.csv
+    outs:
+      - data/features.csv
+
+  train:
+    cmd: make train
+    deps:
+      - src/wine_quality/main.py
+      - data/features.csv

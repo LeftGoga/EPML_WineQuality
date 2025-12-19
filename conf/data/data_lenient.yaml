@@ -1,0 +1,5 @@
+# @package data
+
+data_url: "http://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
+test_size: 0.2
+quality_threshold: 6
