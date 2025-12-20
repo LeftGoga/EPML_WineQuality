@@ -70,13 +70,16 @@ services:
     ports:
       - "8008:8008"
     environment:
-      - CLEARML_ELASTIC_SERVICE_HOST=elasticsearch
-      - CLEARML_ELASTIC_SERVICE_PORT=9200
-      - CLEARML_MONGODB_SERVICE_HOST=mongo
-      - CLEARML_MONGODB_SERVICE_PORT=27017
-      - CLEARML_REDIS_SERVICE_HOST=redis
-      - CLEARML_REDIS_SERVICE_PORT=6379
-      - CLEARML_SERVER_DEPLOYMENT_TYPE=linux
+      CLEARML_ELASTIC_SERVICE_HOST: elasticsearch
+      CLEARML_ELASTIC_SERVICE_PORT: 9200
+      CLEARML_MONGODB_SERVICE_HOST: mongo
+      CLEARML_MONGODB_SERVICE_PORT: 27017
+      CLEARML_REDIS_SERVICE_HOST: redis
+      CLEARML_REDIS_SERVICE_PORT: 6379
+      CLEARML_SERVER_DEPLOYMENT_TYPE: linux
+      CLEARML__APISERVER__AUTH__FIXED_USERS__ENABLED: true
+      CLEARML__APISERVER__AUTH__FIXED_USERS__PASS_HASHED: false
+      CLEARML__APISERVER__AUTH__FIXED_USERS__USERS: '[{"username": "admin", "password": "${ADMIN_PASSWORD}", "name": "admin"}]'
     volumes:
       - clearml_logs:/var/log/clearml
       - clearml_config:/opt/clearml/config
