@@ -1,0 +1,8 @@
+# Environment variables
+.env
+
+# Docker volumes data (опционально, если хотите игнорировать данные)
+# mongo_data/
+# redis_data/
+# es_data/
+# clearml_data/

@@ -29,27 +29,22 @@ from .model import ModelType, run_experiment, save_model
 
 load_dotenv()
 
-# === Очистка от дублирующих handlers Luigi ===
 for logger_name in ["", "luigi", "luigi-interface"]:
     logger = logging.getLogger(logger_name)
     logger.handlers.clear()
     logger.propagate = False
 
-# Настройка единого красивого вывода
 handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("[%(asctime)s][%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 handler.setFormatter(formatter)
 
 logging.getLogger().addHandler(handler)
 logging.getLogger().setLevel(logging.INFO)
-
-# Уровни для специфических логгеров
-logging.getLogger("luigi-interface").setLevel(logging.INFO)  # или WARNING, если совсем тихо
+logging.getLogger("luigi-interface").setLevel(logging.INFO)
 logging.getLogger("luigi").setLevel(logging.INFO)
 logging.getLogger("mlflow").setLevel(logging.WARNING)
 logging.getLogger("alembic").setLevel(logging.WARNING)
 
-# Создаем logger для использования в модуле
 logger = logging.getLogger(__name__)
 
 
@@ -77,7 +72,7 @@ class NotificationSystem:
         try:
             smtp_port = int(smtp_port_str)
         except (ValueError, TypeError):
-            smtp_port = 465  # Порт по умолчанию для mail.ru SSL
+            smtp_port = 465
 
         return {
             "host": smtp_host,
@@ -99,18 +94,15 @@ class NotificationSystem:
             )
             return
 
-        # Извлекаем значения с проверкой типов для mypy
         smtp_host = config["host"]
         smtp_port = config["port"]
         smtp_user = config["user"]
         smtp_password = config["password"]
         smtp_recipient = config["recipient"]
 
-        # Проверка типов после проверки на None
         if not smtp_host or not smtp_user or not smtp_password or not smtp_recipient:
             return
 
-        # Приведение типов для mypy
         host = str(smtp_host)
         port = int(smtp_port) if isinstance(smtp_port, int) else 465
         user = str(smtp_user)
@@ -118,28 +110,22 @@ class NotificationSystem:
         recipient = str(smtp_recipient)
 
         try:
-            # Создаем сообщение
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = user
             msg["To"] = recipient
 
-            # Добавляем тело сообщения
             if is_html:
                 msg.attach(MIMEText(body, "html", "utf-8"))
             else:
                 msg.attach(MIMEText(body, "plain", "utf-8"))
 
-            # Подключение к SMTP серверу
-            # Для mail.ru обычно используется SSL на порту 465
             if port == 465:
-                # SSL соединение
                 context = ssl.create_default_context()
                 with smtplib.SMTP_SSL(host, port, context=context) as server:
                     server.login(user, password)
                     server.send_message(msg)
             else:
-                # STARTTLS для других портов (например, 587)
                 with smtplib.SMTP(host, port) as server:
                     server.starttls()
                     server.login(user, password)
@@ -184,7 +170,6 @@ class NotificationSystem:
         if metrics:
             logger.info(f"  Метрики: {metrics}")
 
-        # Отправка email
         if self.email_enabled:
             metrics_html = self._format_metrics_html(metrics)
             email_body = f"""
@@ -209,7 +194,6 @@ class NotificationSystem:
         if error:
             logger.error(f"  Детали: {error}")
 
-        # Отправка email
         if self.email_enabled:
             error_details = (
                 f"<p><strong>Детали ошибки:</strong><br><code style='background-color: #f5f5f5; padding: 5px;'>{error}</code></p>"
@@ -241,7 +225,6 @@ class NotificationSystem:
             logger.info(f"  {key}: {value}")
         logger.info("=" * 80)
 
-        # Отправка email
         if self.email_enabled:
             summary_html = self._format_metrics_html(summary)
             email_body = f"""
@@ -258,7 +241,6 @@ class NotificationSystem:
             self._send_email("📊 Итоги выполнения пайплайна", email_body, is_html=True)
 
 
-# Настройка логирования для уменьшения вывода
 logging.getLogger("luigi").setLevel(logging.INFO)
 logging.getLogger("luigi-interface").setLevel(logging.INFO)
 logging.getLogger("mlflow").setLevel(logging.WARNING)
@@ -282,7 +264,6 @@ class PrepareData(luigi.Task):
         logger.info(f"Начало подготовки данных: {self.output_path}")
         try:
             df = load_data()
-            # Сохраняем с разделителем ";", как в исходных данных
             df.to_csv(self.output_path, index=False, sep=";")
             elapsed = time.time() - start_time
             logger.info(f"Данные подготовлены за {elapsed:.2f} секунд")
@@ -322,16 +303,11 @@ class GenerateFeatures(luigi.Task):
         start_time = time.time()
         logger.info(f"Начало генерации признаков: {self.output_path}")
         try:
-            # Загружаем данные из файла, созданного задачей PrepareData
-            # Пробуем разные разделители, так как исходные данные используют ";"
             try:
                 df = pd.read_csv(self.input_path, sep=";")
             except Exception:
-                # Если не получилось с ";", пробуем ","
                 df = pd.read_csv(self.input_path, sep=",")
-            # Убеждаемся, что колонки имеют правильные имена (без пробелов)
             df.columns = df.columns.str.replace(" ", "_")
-            # Проверяем наличие колонки quality
             if "quality" not in df.columns:
                 raise ValueError(
                     f"Колонка 'quality' не найдена в данных. Доступные колонки: {list(df.columns)}"
@@ -347,7 +323,7 @@ class GenerateFeatures(luigi.Task):
                     "output_path": self.output_path,
                     "quality_threshold": self.quality_threshold,
                     "rows": len(df),
-                    "features": len(df.columns) - 1,  # исключаем target
+                    "features": len(df.columns) - 1,
                 },
             )
         except Exception as e:
@@ -397,42 +373,32 @@ class TrainModel(luigi.Task):
         if not self.hydra_config_path or not self.hydra_config_name:
             return None
         try:
-            # Парсим overrides если они переданы
             overrides = []
             if self.hydra_overrides:
                 if isinstance(self.hydra_overrides, str):
                     try:
                         overrides = json.loads(self.hydra_overrides)
                     except json.JSONDecodeError:
-                        # Если это не JSON, пробуем как строку с разделителями
                         overrides = [
                             o.strip() for o in self.hydra_overrides.split(",") if o.strip()
                         ]
                 elif isinstance(self.hydra_overrides, list):
                     overrides = self.hydra_overrides
 
-            # Используем относительный путь от BASE_DIR
-            # Hydra.initialize() работает с относительными путями от точки входа
             config_path = self.hydra_config_path
             if Path(config_path).is_absolute():
-                # Если путь абсолютный, пытаемся сделать его относительным от BASE_DIR
                 try:
                     config_path = str(Path(config_path).relative_to(BASE_DIR))
                 except ValueError:
-                    # Если не получается сделать относительным, используем как есть
                     pass
 
-            # Деинициализируем Hydra, если он уже инициализирован
-            # Это необходимо для повторной инициализации в задачах Luigi
             try:
                 hydra_instance = GlobalHydra.instance()
                 if hydra_instance.is_initialized():
                     hydra_instance.clear()
             except Exception:  # nosec B110
-                pass  # Игнорируем ошибки деинициализации
+                pass
 
-            # Инициализируем Hydra и загружаем конфигурацию
-            # Меняем рабочую директорию на BASE_DIR для правильной работы с относительными путями
             original_cwd = os.getcwd()
             try:
                 os.chdir(BASE_DIR)
@@ -476,14 +442,10 @@ class TrainModel(luigi.Task):
             return (100, 50)
 
     def _prepare_data(self) -> tuple:
-        # Загружаем данные из файла features.csv, созданного задачей GenerateFeatures
-        # Файл сохранен с разделителем "," (запятая) по умолчанию в to_csv()
-        # Пробуем сначала запятую, потом точку с запятой
         df = None
         for sep in [",", ";"]:
             try:
                 df = pd.read_csv(self.features_path, sep=sep)
-                # Проверяем, что файл прочитан правильно (больше одной колонки)
                 if len(df.columns) > 1:
                     break
             except Exception:  # nosec B112
@@ -494,19 +456,14 @@ class TrainModel(luigi.Task):
                 f"Не удалось правильно прочитать файл {self.features_path}. Проверьте разделитель."
             )
 
-        # Убеждаемся, что колонки имеют правильные имена (без пробелов)
         df.columns = df.columns.str.replace(" ", "_")
 
-        # Проверяем наличие необходимых колонок
         if "good_quality" not in df.columns:
             raise ValueError(
                 f"Колонка 'good_quality' не найдена в данных. Доступные колонки: {list(df.columns)}"
             )
 
         X, y = get_features_and_target(df)
-        # Преобразуем параметры в правильные типы
-        # Luigi.FloatParameter и IntParameter должны автоматически преобразовывать,
-        # но на всякий случай делаем явное преобразование
         test_size = float(self.test_size)
         random_state = int(self.random_state)
         X_train, X_test, y_train, y_test = split_data(
@@ -528,7 +485,6 @@ class TrainModel(luigi.Task):
             "mlp_max_iter": self._parse_int_parameter(self.mlp_max_iter),
         }
 
-        # Если есть Hydra конфигурация, используем её значения
         if hydra_cfg:
             model_cfg = OmegaConf.select(hydra_cfg, "model", default=None)
             if model_cfg:
@@ -567,7 +523,6 @@ class TrainModel(luigi.Task):
             model_type = ModelType(self.model_type.lower())
             params = self._parse_model_parameters(hydra_cfg)
 
-            # Преобразуем random_state в int (Luigi может передавать как строку)
             random_state = (
                 int(self.random_state) if isinstance(self.random_state, str) else self.random_state
             )
@@ -587,7 +542,9 @@ class TrainModel(luigi.Task):
                 mlp_max_iter=params["mlp_max_iter"],
                 random_state=random_state,
                 use_mlflow=self.use_mlflow and not self.no_mlflow,
-                experiment_name=self.experiment_name,
+                use_clearml=False,
+                log_artifacts=True,
+                model_path=self.model_path,
                 save_local=True,
                 register_model_name=f"Wine{model_type.value.title()}",
             )
@@ -595,7 +552,6 @@ class TrainModel(luigi.Task):
             model = result["model"]
             save_model(model, self.model_path)
 
-            # Сохранение метрик для мониторинга
             metrics = result.get("metrics", {})
             metrics_path = (
                 Path(self.model_path).parent / f"{Path(self.model_path).stem}_metrics.json"
@@ -655,7 +611,6 @@ class EvaluateModel(luigi.Task):
         start_time = time.time()
         logger.info(f"Начало оценки модели: {self.model_path}")
         try:
-            # Загрузка метрик из предыдущего этапа
             metrics_path = (
                 Path(self.model_path).parent / f"{Path(self.model_path).stem}_metrics.json"
             )
@@ -665,7 +620,6 @@ class EvaluateModel(luigi.Task):
             else:
                 metrics = {}
 
-            # Создание отчета
             report = {
                 "model_path": self.model_path,
                 "metrics": metrics,
@@ -763,7 +717,6 @@ class WineQualityPipeline(luigi.WrapperTask):
         if self.enable_notifications:
             notifications = NotificationSystem(enabled=True)
             try:
-                # Загрузка метрик из файла
                 metrics_path = (
                     Path(self.model_path).parent / f"{Path(self.model_path).stem}_metrics.json"
                 )

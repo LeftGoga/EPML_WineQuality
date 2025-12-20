@@ -52,6 +52,15 @@ class MLflowConfig(BaseModel):
     log_artifacts: bool = Field(default=True, description="Логировать ли артефакты")
 
 
+class ClearMLConfig(BaseModel):
+    project_name: str = Field(default="Wine Quality", description="Имя проекта в ClearML")
+    task_type: str = Field(default="training", description="Тип задачи в ClearML")
+    auto_connect_frameworks: bool = Field(
+        default=True, description="Автоматически подключать фреймворки"
+    )
+    auto_connect_streams: bool = Field(default=True, description="Автоматически подключать потоки")
+
+
 class PathsConfig(BaseModel):
     plots_dir: str = Field(description="Директория для графиков")
     models_dir: str = Field(description="Директория для моделей")
@@ -66,6 +75,7 @@ class AppConfig(BaseModel):
     model_type: Literal["random_forest", "boosting", "mlp"] = Field(description="Тип модели")
     random_state: int = Field(ge=0, description="Случайное состояние для воспроизводимости")
     no_mlflow: bool = Field(default=False, description="Отключить логирование в MLflow")
+    no_clearml: bool = Field(default=False, description="Отключить логирование в ClearML")
     no_save: bool = Field(default=False, description="Не сохранять модель локально")
     analyze_experiments: bool = Field(default=False, description="Показать анализ экспериментов")
     experiment_name: str | None = Field(
@@ -76,6 +86,7 @@ class AppConfig(BaseModel):
     model: ModelConfig
     data: DataConfig
     mlflow: MLflowConfig
+    clearml: ClearMLConfig
     paths: PathsConfig
 
     env: dict[str, Any] | None = Field(default=None, description="Настройки окружения")

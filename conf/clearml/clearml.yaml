@@ -1,0 +1,5 @@
+# Конфигурация ClearML
+project_name: "Wine Quality"
+task_type: "training"
+auto_connect_frameworks: true
+auto_connect_streams: true

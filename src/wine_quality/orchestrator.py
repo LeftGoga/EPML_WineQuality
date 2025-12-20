@@ -97,18 +97,14 @@ def _prepare_luigi_params(validated_cfg: AppConfig, cfg: DictConfig) -> dict[str
 
     model_params = _prepare_model_params(model_type, validated_cfg.model)
 
-    # Получаем параметры Hydra из текущего контекста
-    # Используем относительный путь от корня проекта (относительно точки входа)
     hydra_config_path = "conf"
     hydra_config_name = "config"
     hydra_overrides = []
 
-    # Пытаемся получить overrides из текущего контекста Hydra
     try:
         hydra_instance = GlobalHydra.instance()
         if hydra_instance.is_initialized():
             hydra_cfg = hydra_instance.hydra
-            # Получаем overrides из контекста Hydra
             if hasattr(hydra_cfg, "overrides"):
                 hydra_overrides = hydra_cfg.overrides.task_overrides
             elif hasattr(hydra_cfg, "config_loader") and hasattr(

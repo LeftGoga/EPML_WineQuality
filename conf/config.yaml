@@ -5,6 +5,7 @@ defaults:
   - model: boosting
   - data: data
   - mlflow: mlflow
+  - clearml: clearml
   - paths: paths
   - pipeline: pipeline_luigi
   - env: null
@@ -15,6 +16,7 @@ random_state: 42
 
 
 no_mlflow: false
+no_clearml: false
 no_save: false
 analyze_experiments: false
 
