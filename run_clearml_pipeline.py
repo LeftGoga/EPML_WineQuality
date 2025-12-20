@@ -8,9 +8,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+from clearml import Task
+
 from wine_quality.clearml_pipeline import PipelineDecorator, wine_quality_pipeline
 
 if __name__ == "__main__":
+    # Инициализируем Task с проектом "Wine Quality" для установки проекта по умолчанию
+    # Используем тип 'controller', так как пайплайны управляются контроллерами
+    # Эта задача будет закрыта после запуска пайплайна
+    controller_task = Task.init(
+        project_name="Wine Quality",
+        task_name="WineQuality",
+        task_type="controller",
+    )
+
     PipelineDecorator.run_locally()
 
     wine_quality_pipeline(
@@ -23,3 +34,7 @@ if __name__ == "__main__":
         boosting_learning_rate=0.1,
         experiment_name="Wine Quality - Boosting",
     )
+
+    # Закрываем контроллер-задачу после запуска пайплайна
+    if controller_task:
+        controller_task.close()
