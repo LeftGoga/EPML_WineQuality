@@ -6,11 +6,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env перед импортом ClearML
+load_dotenv()
+
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from clearml import Task
+from clearml import Task  # noqa: E402
 
-from wine_quality.clearml_pipeline import PipelineDecorator, wine_quality_pipeline
+from wine_quality.clearml_pipeline import PipelineDecorator, wine_quality_pipeline  # noqa: E402
 
 if __name__ == "__main__":
     # Инициализируем Task с проектом "Wine Quality" для установки проекта по умолчанию
