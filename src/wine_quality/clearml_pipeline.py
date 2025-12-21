@@ -218,7 +218,7 @@ class NotificationSystem:
 
 
 @PipelineDecorator.component(
-    cache=True,
+    cache=False,
     execution_queue="default",
     name="Load and Prepare Data",
     return_values=["data_path"],
@@ -362,7 +362,7 @@ def load_and_prepare_data(  # noqa: PLR0912, PLR0915
 
 
 @PipelineDecorator.component(
-    cache=True,
+    cache=False,
     execution_queue="default",
     name="Train Model",
     return_values=["results_path"],
@@ -410,6 +410,7 @@ def train_model_component(  # noqa: PLR0912, PLR0915
         sys.path.insert(0, str(project_root))
 
     try:
+        from wine_quality.clearml_model_registry import register_model_with_version  # noqa: PLC0415
         from wine_quality.config import BASE_DIR  # noqa: PLC0415
         from wine_quality.model import ModelType, run_experiment  # noqa: PLC0415
     except ImportError:
@@ -430,6 +431,19 @@ def train_model_component(  # noqa: PLR0912, PLR0915
         spec.loader.exec_module(model_module)
         ModelType = model_module.ModelType
         run_experiment = model_module.run_experiment
+
+        # Импортируем register_model_with_version
+        registry_path = src_path / "wine_quality" / "clearml_model_registry.py"
+        if registry_path.exists():
+            spec = importlib.util.spec_from_file_location("clearml_model_registry", registry_path)
+            if spec is not None and spec.loader is not None:
+                registry_module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(registry_module)
+                register_model_with_version = registry_module.register_model_with_version
+            else:
+                register_model_with_version = None
+        else:
+            register_model_with_version = None
 
     component_logger.info(f"Обучение модели: {model_type}")
 
@@ -466,6 +480,7 @@ def train_model_component(  # noqa: PLR0912, PLR0915
         save_local=True,
         log_artifacts=True,
         df_for_plots=df,
+        register_model_name=None,  # Не регистрируем модель здесь, регистрируем в пайплайне с версионированием
     )
 
     # Сохраняем результаты
@@ -515,14 +530,38 @@ def train_model_component(  # noqa: PLR0912, PLR0915
                 }
             )
 
-            # Логируем модель как артефакт
+            # Регистрируем модель с версионированием
             model_file_path = str(BASE_DIR / "models" / f"wine_{model_type}.pkl")
+            model_name = f"wine_quality_{model_type}"
+
             if Path(model_file_path).exists():
-                task.upload_artifact(
-                    name=f"model_{model_type}",
-                    artifact_object=model_file_path,
-                )
-                component_logger.info(f"Модель загружена как артефакт: {model_file_path}")
+                # Используем функцию регистрации модели с версионированием
+                if register_model_with_version:
+                    version_info = register_model_with_version(
+                        model=result["model"],
+                        model_name=model_name,
+                        model_path=model_file_path,
+                        framework="scikit-learn",
+                        tags=[model_type, "wine_quality", "pipeline"],
+                        labels={
+                            "model_type": model_type,
+                            "accuracy": str(metrics.get("accuracy", 0)),
+                            "f1_weighted": str(metrics.get("f1_weighted", 0)),
+                            "experiment_name": experiment_name or "default",
+                        },
+                        auto_version=True,
+                    )
+                    version = version_info.get("version", "unknown")
+                    component_logger.info(
+                        f"Модель зарегистрирована с версионированием: {model_name}, версия: {version}"
+                    )
+                else:
+                    # Fallback: логируем модель как артефакт без версионирования
+                    task.upload_artifact(
+                        name=f"model_{model_type}",
+                        artifact_object=model_file_path,
+                    )
+                    component_logger.info(f"Модель загружена как артефакт: {model_file_path}")
             else:
                 component_logger.warning(f"Файл модели не найден: {model_file_path}")
     except Exception as e:
@@ -532,7 +571,7 @@ def train_model_component(  # noqa: PLR0912, PLR0915
 
 
 @PipelineDecorator.component(
-    cache=True,
+    cache=False,
     execution_queue="default",
     name="Evaluate Model",
     return_values=["evaluation_path"],

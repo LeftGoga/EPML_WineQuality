@@ -516,12 +516,14 @@ def run_experiment(
         save_path = model_path or str(MODEL_PATH)
         save_model(model, save_path)
 
-    if use_clearml and is_clearml_available() and save_local:
+    # Логируем модель в ClearML только если указано register_model_name
+    # Если register_model_name=None, модель будет залогирована в пайплайне с версионированием
+    if use_clearml and is_clearml_available() and save_local and register_model_name:
         try:
             final_model_path = model_path or str(MODEL_PATH)
-            model_version = log_model_to_clearml(
+            log_model_to_clearml(
                 model=model,
-                model_name=register_model_name or f"wine_{model_type.value}",
+                model_name=register_model_name,
                 model_path=final_model_path,
                 framework="scikit-learn",
                 tags=tags,
@@ -530,10 +532,7 @@ def run_experiment(
                     "f1_weighted": str(metrics["f1_weighted"]),
                     "model_type": model_type.value,
                 },
-                auto_version=True,  # Включаем автоматическое версионирование
             )
-            if model_version:
-                logger.info(f"Модель зарегистрирована с версией: {model_version}")
         except Exception as e:
             logger.warning(f"Ошибка при логировании модели в ClearML: {e}")
 
