@@ -151,6 +151,9 @@ class NotificationSystem:
             email_body = f"""
             <html>
                 <body style='font-family: Arial, sans-serif;'>
+                    <div style='background-color: #f8f9fa; padding: 10px; margin-bottom: 15px; border-left: 4px solid #007bff;'>
+                        <p style='margin: 0; color: #007bff; font-weight: bold;'>📧 Уведомление из ClearML</p>
+                    </div>
                     <h2 style='color: #28a745;'>✓ Успешное выполнение</h2>
                     <p>{message}</p>
                     {metrics_html if metrics else ""}
@@ -160,7 +163,7 @@ class NotificationSystem:
                 </body>
             </html>
             """
-            self._send_email(f"✓ Успех: {message[:50]}", email_body, is_html=True)
+            self._send_email(f"[ClearML] ✓ Успех: {message[:50]}", email_body, is_html=True)
 
     def notify_failure(self, message: str, error: str | None = None) -> None:
         """Отправляет уведомление об ошибке."""
@@ -179,6 +182,9 @@ class NotificationSystem:
             email_body = f"""
             <html>
                 <body style='font-family: Arial, sans-serif;'>
+                    <div style='background-color: #f8f9fa; padding: 10px; margin-bottom: 15px; border-left: 4px solid #007bff;'>
+                        <p style='margin: 0; color: #007bff; font-weight: bold;'>📧 Уведомление из ClearML</p>
+                    </div>
                     <h2 style='color: #dc3545;'>✗ Ошибка выполнения</h2>
                     <p>{message}</p>
                     {error_details}
@@ -188,7 +194,7 @@ class NotificationSystem:
                 </body>
             </html>
             """
-            self._send_email(f"✗ Ошибка: {message[:50]}", email_body, is_html=True)
+            self._send_email(f"[ClearML] ✗ Ошибка: {message[:50]}", email_body, is_html=True)
 
     def notify_completion(self, summary: dict[str, Any]) -> None:
         """Отправляет итоговое уведомление."""
@@ -206,6 +212,9 @@ class NotificationSystem:
             email_body = f"""
             <html>
                 <body style='font-family: Arial, sans-serif;'>
+                    <div style='background-color: #f8f9fa; padding: 10px; margin-bottom: 15px; border-left: 4px solid #007bff;'>
+                        <p style='margin: 0; color: #007bff; font-weight: bold;'>📧 Уведомление из ClearML</p>
+                    </div>
                     <h2 style='color: #007bff;'>📊 Итоги выполнения пайплайна</h2>
                     {summary_html}
                     <p style='color: #666; font-size: 12px; margin-top: 20px;'>
@@ -214,7 +223,7 @@ class NotificationSystem:
                 </body>
             </html>
             """
-            self._send_email("📊 Итоги выполнения пайплайна", email_body, is_html=True)
+            self._send_email("[ClearML] 📊 Итоги выполнения пайплайна", email_body, is_html=True)
 
 
 @PipelineDecorator.component(
