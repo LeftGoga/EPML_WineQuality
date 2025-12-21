@@ -44,9 +44,9 @@ def register_model_with_version(
 
     Returns:
         Словарь с информацией о зарегистрированной модели:
-        - 'version': номер версии (целое число: 1, 2, 3...)
-        - 'model_name': имя модели
-        - 'version_info': информация о версиях (словарь с latest_version, next_version и т.д.)
+        - version: номер версии (целое число)
+        - model_name: имя модели
+        - version_info: информация о версиях
     """
     if not CLEARML_AVAILABLE:
         logger.warning("ClearML не доступен")

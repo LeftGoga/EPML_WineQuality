@@ -228,7 +228,16 @@ def load_and_prepare_data(  # noqa: PLR0912, PLR0915
     test_size: float = 0.2,
     random_state: int = 42,
 ) -> str:
-    """Загружает и подготавливает данные."""
+    """Загружает и подготавливает данные для обучения.
+
+    Args:
+        quality_threshold: Порог для создания бинарной целевой переменной
+        test_size: Доля тестовой выборки
+        random_state: Seed для воспроизводимости
+
+    Returns:
+        Путь к файлу с подготовленными данными
+    """
     logging.basicConfig(level=logging.INFO)
     component_logger = logging.getLogger(__name__)
 
@@ -257,7 +266,6 @@ def load_and_prepare_data(  # noqa: PLR0912, PLR0915
             else:
                 raise ImportError("Не удалось определить путь к проекту") from None
 
-    # Добавляем путь к модулям
     src_path = project_root / "src"
     if str(src_path) not in sys.path:
         sys.path.insert(0, str(src_path))
@@ -314,7 +322,6 @@ def load_and_prepare_data(  # noqa: PLR0912, PLR0915
         X, y, test_size=test_size, random_state=random_state
     )
 
-    # Сохраняем данные в файл для передачи между компонентами
     data_dir = BASE_DIR / "data" / "clearml_pipeline"
     data_dir.mkdir(parents=True, exist_ok=True)
     data_path = data_dir / "prepared_data.pkl"
@@ -333,7 +340,6 @@ def load_and_prepare_data(  # noqa: PLR0912, PLR0915
 
     component_logger.info(f"Данные загружены и сохранены: train={len(X_train)}, test={len(X_test)}")
 
-    # Логируем метрики в ClearML
     try:
         task = Task.current_task()
         if task:
@@ -380,7 +386,24 @@ def train_model_component(  # noqa: PLR0912, PLR0915
     random_state: int = 42,
     experiment_name: str | None = None,
 ) -> str:
-    """Обучает модель."""
+    """Обучает модель машинного обучения.
+
+    Args:
+        data_path: Путь к файлу с подготовленными данными
+        model_type: Тип модели (boosting, random_forest, mlp)
+        rf_n_estimators: Количество деревьев для Random Forest
+        rf_max_depth: Максимальная глубина для Random Forest
+        boosting_n_estimators: Количество бустинговых итераций
+        boosting_max_depth: Максимальная глубина для бустинга
+        boosting_learning_rate: Скорость обучения для бустинга
+        mlp_hidden_layer_sizes: Размеры скрытых слоев для MLP
+        mlp_max_iter: Максимальное количество итераций для MLP
+        random_state: Seed для воспроизводимости
+        experiment_name: Имя эксперимента в ClearML
+
+    Returns:
+        Путь к файлу с результатами обучения
+    """
     logging.basicConfig(level=logging.INFO)
     component_logger = logging.getLogger(__name__)
 
@@ -432,7 +455,6 @@ def train_model_component(  # noqa: PLR0912, PLR0915
         ModelType = model_module.ModelType
         run_experiment = model_module.run_experiment
 
-        # Импортируем register_model_with_version
         registry_path = src_path / "wine_quality" / "clearml_model_registry.py"
         if registry_path.exists():
             spec = importlib.util.spec_from_file_location("clearml_model_registry", registry_path)
@@ -472,18 +494,17 @@ def train_model_component(  # noqa: PLR0912, PLR0915
         mlp_hidden_layer_sizes=mlp_hidden_layer_sizes,
         mlp_max_iter=mlp_max_iter,
         random_state=random_state,
-        use_mlflow=False,  # MLflow в отдельном пайплайне
-        use_clearml=True,  # ClearML логирование внутри run_experiment
+        use_mlflow=False,
+        use_clearml=True,
         experiment_name=experiment_name,
         clearml_project_name="Wine Quality",
         model_path=str(BASE_DIR / "models" / f"wine_{model_type}.pkl"),
         save_local=True,
         log_artifacts=True,
         df_for_plots=df,
-        register_model_name=None,  # Не регистрируем модель здесь, регистрируем в пайплайне с версионированием
+        register_model_name=None,
     )
 
-    # Сохраняем результаты
     results_dir = BASE_DIR / "data" / "clearml_pipeline"
     results_dir.mkdir(parents=True, exist_ok=True)
     results_path = results_dir / f"results_{model_type}.pkl"
@@ -500,11 +521,9 @@ def train_model_component(  # noqa: PLR0912, PLR0915
 
     component_logger.info(f"Модель обучена: accuracy={result['metrics'].get('accuracy', 0):.4f}")
 
-    # Логируем метрики и модель в ClearML
     try:
         task = Task.current_task()
         if task:
-            # Логируем метрики
             metrics = result["metrics"]
             task.logger.report_scalar(
                 title="Metrics",
@@ -519,7 +538,6 @@ def train_model_component(  # noqa: PLR0912, PLR0915
                 iteration=0,
             )
 
-            # Логируем параметры модели
             task.connect(
                 {
                     "model_type": model_type,
@@ -530,12 +548,10 @@ def train_model_component(  # noqa: PLR0912, PLR0915
                 }
             )
 
-            # Регистрируем модель с версионированием
             model_file_path = str(BASE_DIR / "models" / f"wine_{model_type}.pkl")
             model_name = f"wine_quality_{model_type}"
 
             if Path(model_file_path).exists():
-                # Используем функцию регистрации модели с версионированием
                 if register_model_with_version:
                     version_info = register_model_with_version(
                         model=result["model"],
@@ -556,7 +572,6 @@ def train_model_component(  # noqa: PLR0912, PLR0915
                         f"Модель зарегистрирована с версионированием: {model_name}, версия: {version}"
                     )
                 else:
-                    # Fallback: логируем модель как артефакт без версионирования
                     task.upload_artifact(
                         name=f"model_{model_type}",
                         artifact_object=model_file_path,
@@ -580,7 +595,15 @@ def evaluate_model_component(
     results_path: str,
     data_path: str,  # noqa: ARG001
 ) -> str:
-    """Оценивает модель."""
+    """Оценивает обученную модель.
+
+    Args:
+        results_path: Путь к файлу с результатами обучения
+        data_path: Путь к данным (не используется, оставлен для совместимости)
+
+    Returns:
+        Путь к файлу с результатами оценки
+    """
     logging.basicConfig(level=logging.INFO)
     component_logger = logging.getLogger(__name__)
 
@@ -685,19 +708,37 @@ def wine_quality_pipeline(
     mlp_max_iter: int | None = None,
     experiment_name: str | None = None,
 ) -> dict[str, Any]:
-    """Главный пайплайн для обучения модели Wine Quality."""
+    """Главный пайплайн для обучения модели Wine Quality.
+
+    Выполняет последовательность: загрузка данных -> обучение -> оценка.
+
+    Args:
+        quality_threshold: Порог для создания бинарной целевой переменной
+        test_size: Доля тестовой выборки
+        random_state: Seed для воспроизводимости
+        model_type: Тип модели (boosting, random_forest, mlp)
+        rf_n_estimators: Количество деревьев для Random Forest
+        rf_max_depth: Максимальная глубина для Random Forest
+        boosting_n_estimators: Количество бустинговых итераций
+        boosting_max_depth: Максимальная глубина для бустинга
+        boosting_learning_rate: Скорость обучения для бустинга
+        mlp_hidden_layer_sizes: Размеры скрытых слоев для MLP
+        mlp_max_iter: Максимальное количество итераций для MLP
+        experiment_name: Имя эксперимента в ClearML
+
+    Returns:
+        Словарь с результатами оценки модели
+    """
     logger.info("Запуск пайплайна Wine Quality...")
     notifications = NotificationSystem(enabled=True)
 
     try:
-        # Шаг 1: Загрузка и подготовка данных
         data_path = load_and_prepare_data(
             quality_threshold=quality_threshold,
             test_size=test_size,
             random_state=random_state,
         )
 
-        # Шаг 2: Обучение модели
         results_path = train_model_component(
             data_path=data_path,
             model_type=model_type,
@@ -712,24 +753,18 @@ def wine_quality_pipeline(
             experiment_name=experiment_name,
         )
 
-        # Шаг 3: Оценка модели
         evaluation_path = evaluate_model_component(
             results_path=results_path,
             data_path=data_path,
         )
 
-        # Загружаем результаты для возврата
-        # Преобразуем proxy объект в строку
-        eval_path_str = str(evaluation_path)
-        # Убираем возможные кавычки или другие символы
-        eval_path_str = eval_path_str.strip("'\"")
+        eval_path_str = str(evaluation_path).strip("'\"")
 
         with open(eval_path_str, "rb") as f:
             evaluation_results: dict[str, Any] = pickle.load(f)  # nosec B301
 
         logger.info("Пайплайн завершен успешно!")
 
-        # Отправляем итоговое уведомление об успешном завершении
         summary = {
             "Модель": model_type,
             "Accuracy": evaluation_results.get("accuracy", "N/A"),
@@ -751,11 +786,8 @@ def wine_quality_pipeline(
 
 
 if __name__ == "__main__":
-    # Для локального запуска (отладка)
-    # Для запуска на сервере закомментируйте следующую строку
     PipelineDecorator.run_locally()
 
-    # Запуск пайплайна
     wine_quality_pipeline(
         quality_threshold=7,
         test_size=0.2,
