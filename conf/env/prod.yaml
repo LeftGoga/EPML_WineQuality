@@ -1,0 +1,7 @@
+# @package env
+
+no_mlflow: false
+no_save: false
+analyze_experiments: true
+
+random_state: 321

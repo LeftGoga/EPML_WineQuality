@@ -1,0 +1,26 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - model: boosting
+  - data: data
+  - mlflow: mlflow
+  - clearml: clearml
+  - paths: paths
+  - pipeline: pipeline_luigi
+  - env: null
+
+
+model_type: boosting
+random_state: 42
+
+
+no_mlflow: false
+no_clearml: false
+no_save: false
+analyze_experiments: false
+
+
+experiment_name: null
+register_model_name: null
+export_comparison: null

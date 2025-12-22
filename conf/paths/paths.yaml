@@ -1,0 +1,12 @@
+# @package paths
+
+
+plots_dir: "plots"
+models_dir: "models"
+data_dir: "data"
+
+
+plot_quality_filename: "quality_distribution.png"
+plot_corr_filename: "correlation_heatmap.png"
+plot_features_filename: "feature_importances.png"
+model_filename: "wine_rf.pkl"

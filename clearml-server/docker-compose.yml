@@ -1,0 +1,149 @@
+services:
+  mongo:
+    image: mongo:7.0.22
+    container_name: clearml-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - mongo_config:/data/configdb
+    command: --setParameter internalQueryMaxBlockingSortMemoryUsageBytes=196100200
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4.1
+    container_name: clearml-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  elasticsearch:
+    image: elasticsearch:8.17.0
+    container_name: clearml-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - cluster.name=clearml
+      - node.name=clearml
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  apiserver:
+    image: clearml/server:latest
+    container_name: clearml-apiserver
+    command: apiserver
+    ports:
+      - "8008:8008"
+    environment:
+      CLEARML_ELASTIC_SERVICE_HOST: elasticsearch
+      CLEARML_ELASTIC_SERVICE_PORT: 9200
+      CLEARML_MONGODB_SERVICE_HOST: mongo
+      CLEARML_MONGODB_SERVICE_PORT: 27017
+      CLEARML_REDIS_SERVICE_HOST: redis
+      CLEARML_REDIS_SERVICE_PORT: 6379
+      CLEARML_SERVER_DEPLOYMENT_TYPE: linux
+      CLEARML__APISERVER__AUTH__FIXED_USERS__ENABLED: true
+      CLEARML__APISERVER__AUTH__FIXED_USERS__PASS_HASHED: false
+      CLEARML__APISERVER__AUTH__FIXED_USERS__USERS: '[{"username": "admin", "password": "${ADMIN_PASSWORD}", "name": "admin"}]'
+    volumes:
+      - clearml_logs:/var/log/clearml
+      - clearml_config:/opt/clearml/config
+      - clearml_data:/opt/clearml/data/fileserver
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+  fileserver:
+    image: clearml/server:latest
+    container_name: clearml-fileserver
+    command: fileserver
+    ports:
+      - "8081:8081"
+    environment:
+      - CLEARML__fileserver__delete__allow_batch=true
+    volumes:
+      - clearml_logs:/var/log/clearml
+      - clearml_data:/mnt/fileserver
+      - clearml_config:/opt/clearml/config
+    networks:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+  webserver:
+    image: clearml/server:latest
+    container_name: clearml-webserver
+    command: webserver
+    ports:
+      - "8080:80"
+    depends_on:
+      - apiserver
+    networks:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+    driver: local
+  mongo_config:
+    driver: local
+  redis_data:
+    driver: local
+  es_data:
+    driver: local
+  clearml_data:
+    driver: local
+  clearml_logs:
+    driver: local
+  clearml_config:
+    driver: local
+
+networks:
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge

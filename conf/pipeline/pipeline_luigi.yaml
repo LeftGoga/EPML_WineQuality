@@ -1,0 +1,24 @@
+# @package _global_
+
+pipeline:
+  runner: luigi
+  parallel: true
+  workers: 4
+  scheduler: local
+  log_level: INFO
+
+monitoring:
+  enabled: true
+  log_dir: outputs/pipeline_logs
+
+notifications:
+  enabled: true
+  no_notifications: false
+  email:
+    enabled: false
+
+    smtp_host: null
+    smtp_port: null
+    smtp_user: null
+    smtp_password: null
+    recipient_email: null
