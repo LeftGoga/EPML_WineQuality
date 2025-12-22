@@ -1,5 +1,3 @@
-"""Модуль для управления моделями и версионирования в ClearML."""
-
 from __future__ import annotations
 
 import logging
@@ -31,23 +29,6 @@ def register_model_with_version(
     labels: dict[str, str] | None = None,
     auto_version: bool = True,
 ) -> dict[str, Any]:
-    """Регистрирует модель в ClearML с автоматическим версионированием.
-
-    Args:
-        model: Модель для регистрации
-        model_name: Имя модели
-        model_path: Путь к файлу модели
-        framework: Фреймворк модели
-        tags: Список тегов
-        labels: Словарь меток
-        auto_version: Автоматически инкрементировать версию
-
-    Returns:
-        Словарь с информацией о зарегистрированной модели:
-        - version: номер версии (целое число)
-        - model_name: имя модели
-        - version_info: информация о версиях
-    """
     if not CLEARML_AVAILABLE:
         logger.warning("ClearML не доступен")
         return {"version": None, "model_name": model_name, "version_info": None}
@@ -76,15 +57,6 @@ def get_model_comparison(
     model_name: str,
     metric_keys: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Получает сравнение версий модели.
-
-    Args:
-        model_name: Имя модели
-        metric_keys: Список ключей метрик для сравнения
-
-    Returns:
-        Словарь с результатами сравнения версий модели
-    """
     if not CLEARML_AVAILABLE:
         logger.warning("ClearML не доступен")
         return {"model_name": model_name, "versions": [], "best_version": None}
@@ -98,14 +70,6 @@ def get_model_comparison(
 
 
 def list_model_versions(model_name: str) -> list[dict[str, Any]]:
-    """Получает список всех версий модели.
-
-    Args:
-        model_name: Имя модели
-
-    Returns:
-        Список словарей с информацией о версиях
-    """
     comparison = get_model_comparison(model_name)
     versions = comparison.get("versions", [])
     return versions if isinstance(versions, list) else []

@@ -12,30 +12,30 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from wine_quality.clearml_pipeline import PipelineDecorator, wine_quality_pipeline  # noqa: E402
+from wine_quality.clearml_experiment import run_simple_experiment  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Запуск ClearML пайплайна для обучения моделей Wine Quality",
+        description="Запуск простого ClearML эксперимента для обучения моделей Wine Quality (все в одной таске)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Примеры использования:
 
   # Запуск с boosting моделью (по умолчанию)
-  poetry run python run_clearml_pipeline.py
+  poetry run python run_clearml_experiment.py
 
   # Запуск с Random Forest
-  poetry run python run_clearml_pipeline.py --model-type random_forest --rf-n-estimators 200 --rf-max-depth 5
+  poetry run python run_clearml_experiment.py --model-type random_forest --rf-n-estimators 200 --rf-max-depth 5
 
   # Запуск с MLP
-  poetry run python run_clearml_pipeline.py --model-type mlp --mlp-hidden-layer-sizes 100 50 --mlp-max-iter 500
+  poetry run python run_clearml_experiment.py --model-type mlp --mlp-hidden-layer-sizes 100 50 --mlp-max-iter 500
 
   # Запуск с глубоким boosting
-  poetry run python run_clearml_pipeline.py --model-type boosting --boosting-n-estimators 300 --boosting-max-depth 5 --boosting-learning-rate 0.05
+  poetry run python run_clearml_experiment.py --model-type boosting --boosting-n-estimators 300 --boosting-max-depth 5 --boosting-learning-rate 0.05
 
   # Изменение параметров данных
-  poetry run python run_clearml_pipeline.py --quality-threshold 6 --test-size 0.3 --random-state 123
+  poetry run python run_clearml_experiment.py --quality-threshold 6 --test-size 0.3 --random-state 123
         """,
     )
 
@@ -120,17 +120,10 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "--task-name",
+        "--project-name",
         type=str,
-        default="WineQuality",
-        help="Имя задачи контроллера в ClearML (по умолчанию: WineQuality)",
-    )
-
-    parser.add_argument(
-        "--queue",
-        type=str,
-        default="wine",
-        help="Очередь для выполнения компонентов пайплайна (по умолчанию: wine)",
+        default="Wine Quality",
+        help="Имя проекта в ClearML (по умолчанию: Wine Quality)",
     )
 
     return parser.parse_args()
@@ -142,7 +135,7 @@ def get_default_experiment_name(model_type: str) -> str:
         "random_forest": "Random Forest",
         "mlp": "MLP",
     }
-    return f"Wine Quality - {model_names.get(model_type, model_type.title())}"
+    return f"Wine Quality - {model_names.get(model_type, model_type.title())} (Simple Experiment)"
 
 
 if __name__ == "__main__":
@@ -154,11 +147,7 @@ if __name__ == "__main__":
         tuple(args.mlp_hidden_layer_sizes) if args.mlp_hidden_layer_sizes else None
     )
 
-    from wine_quality.clearml_pipeline import PipelineDecorator
-
-    PipelineDecorator.run_locally()
-
-    wine_quality_pipeline(
+    result = run_simple_experiment(
         quality_threshold=args.quality_threshold,
         test_size=args.test_size,
         random_state=args.random_state,
@@ -171,4 +160,10 @@ if __name__ == "__main__":
         mlp_hidden_layer_sizes=mlp_hidden_layer_sizes,
         mlp_max_iter=args.mlp_max_iter,
         experiment_name=experiment_name,
+        project_name=args.project_name,
     )
+
+    print("\nЭксперимент завершен успешно!")
+    print(f"Task ID: {result['task_id']}")
+    print(f"Accuracy: {result['metrics'].get('accuracy', 0):.4f}")
+    print(f"F1-score: {result['metrics'].get('f1_weighted', 0):.4f}")

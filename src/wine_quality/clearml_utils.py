@@ -57,8 +57,13 @@ def log_params_to_clearml(params: dict[str, Any]) -> None:
         logger.warning(f"Ошибка при логировании параметров в ClearML: {e}")
 
 
-def log_metrics_to_clearml(metrics: dict[str, float | int]) -> None:
-    """Логирует метрики в ClearML."""
+def log_metrics_to_clearml(metrics: dict[str, float | int], iteration: int = 0) -> None:
+    """Логирует метрики в ClearML в раздел Scalars.
+
+    Args:
+        metrics: Словарь с метриками (имя метрики -> значение)
+        iteration: Номер итерации для логирования (по умолчанию 0)
+    """
     if not CLEARML_AVAILABLE:
         logger.debug("ClearML не доступен, пропускаем логирование метрик")
         return
@@ -69,17 +74,45 @@ def log_metrics_to_clearml(metrics: dict[str, float | int]) -> None:
         return
 
     try:
+        # Подготавливаем метрики для логирования через connect (отображаются в UI)
+        metrics_for_connect = {}
+
         for metric_name, metric_value in metrics.items():
             if isinstance(metric_value, (int, float)):
+                float_value = float(metric_value)
+
+                # Логируем через report_scalar (для раздела Scalars)
                 task.logger.report_scalar(
                     title="Metrics",
                     series=metric_name,
-                    value=float(metric_value),
-                    iteration=0,
+                    value=float_value,
+                    iteration=iteration,
                 )
-        logger.debug(f"Метрики логированы в ClearML: {list(metrics.keys())}")
+
+                # Также логируем через report_single_value для лучшей видимости
+                try:
+                    task.logger.report_single_value(
+                        title="Metrics",
+                        series=metric_name,
+                        value=float_value,
+                        iteration=iteration,
+                    )
+                except Exception:  # nosec B110
+                    # Если метод не поддерживается, просто пропускаем
+                    pass
+
+                # Сохраняем для логирования через connect
+                metrics_for_connect[f"metrics/{metric_name}"] = float_value
+                metrics_for_connect[metric_name] = float_value
+
+        # Логируем метрики через connect для отображения в UI задачи
+        if metrics_for_connect:
+            task.connect(metrics_for_connect)
+
+        logger.info(f"Метрики логированы в ClearML Scalars: {list(metrics.keys())}")
     except Exception as e:
         logger.warning(f"Ошибка при логировании метрик в ClearML: {e}")
+        logger.debug(traceback.format_exc())
 
 
 def log_plot_to_clearml(
@@ -431,6 +464,30 @@ def log_model_to_clearml(  # noqa: PLR0912, PLR0915
                         except Exception:  # nosec B110
                             pass
 
+                # Сохраняем метрики для модели (без логирования в Scalars, чтобы избежать дублирования)
+                # Метрики логируются только в главной задаче пайплайна
+                metrics_for_model = {}
+                for key, value in model_labels.items():
+                    # Извлекаем числовые метрики (accuracy, f1_weighted и т.д.)
+                    if key in ["accuracy", "f1_weighted", "f1", "precision", "recall", "roc_auc"]:
+                        try:
+                            metric_value = float(value)
+                            metrics_for_model[key] = metric_value
+                            # Не логируем через report_scalar, чтобы избежать дублирования
+                            # Метрики уже логируются в главной задаче пайплайна
+                        except (ValueError, TypeError):
+                            pass
+
+                # Логируем метрики через connect модели для отображения в UI модели (но не в Scalars)
+                if metrics_for_model:
+                    try:
+                        output_model.connect(metrics_for_model)
+                        logger.debug(
+                            f"Метрики модели сохранены в metadata: {list(metrics_for_model.keys())}"
+                        )
+                    except Exception as e:
+                        logger.debug(f"Не удалось сохранить метрики через connect модели: {e}")
+
                 logger.info(
                     f"Модель логирована в ClearML: {model_name_with_version}, версия: {model_version}"
                 )
@@ -466,6 +523,30 @@ def log_model_to_clearml(  # noqa: PLR0912, PLR0915
                                 output_model.labels[key] = str(value)
                         except Exception:  # nosec B110
                             pass
+
+                # Сохраняем метрики для модели (без логирования в Scalars, чтобы избежать дублирования)
+                # Метрики логируются только в главной задаче пайплайна
+                metrics_for_model = {}
+                for key, value in model_labels.items():
+                    # Извлекаем числовые метрики (accuracy, f1_weighted и т.д.)
+                    if key in ["accuracy", "f1_weighted", "f1", "precision", "recall", "roc_auc"]:
+                        try:
+                            metric_value = float(value)
+                            metrics_for_model[key] = metric_value
+                            # Не логируем через report_scalar, чтобы избежать дублирования
+                            # Метрики уже логируются в главной задаче пайплайна
+                        except (ValueError, TypeError):
+                            pass
+
+                # Логируем метрики через connect модели для отображения в UI модели (но не в Scalars)
+                if metrics_for_model:
+                    try:
+                        output_model.connect(metrics_for_model)
+                        logger.debug(
+                            f"Метрики модели сохранены в metadata: {list(metrics_for_model.keys())}"
+                        )
+                    except Exception as e:
+                        logger.debug(f"Не удалось сохранить метрики через connect модели: {e}")
 
                 logger.info(
                     f"Модель логирована в ClearML: {model_name_with_version}, версия: {model_version}"

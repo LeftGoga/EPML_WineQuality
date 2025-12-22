@@ -23,6 +23,7 @@ from sklearn.neural_network import MLPClassifier
 try:
     from .clearml_context import ClearMLTaskContext, is_clearml_available
     from .clearml_utils import (
+        log_artifact_to_clearml,
         log_metrics_to_clearml,
         log_model_to_clearml,
         log_params_to_clearml,
@@ -44,11 +45,11 @@ try:
         MLflowExperimentContext,
         MLflowRunContext,
     )
-    from .mlflow_decorators import log_metrics, log_params
     from .mlflow_registry import log_metadata, set_model_version_tags, transition_model_stage
 except ImportError:
     from clearml_context import ClearMLTaskContext, is_clearml_available
     from clearml_utils import (
+        log_artifact_to_clearml,
         log_metrics_to_clearml,
         log_model_to_clearml,
         log_params_to_clearml,
@@ -70,7 +71,6 @@ except ImportError:
         MLflowExperimentContext,
         MLflowRunContext,
     )
-    from mlflow_decorators import log_metrics, log_params
     from mlflow_registry import log_metadata, set_model_version_tags, transition_model_stage
 
 try:
@@ -91,7 +91,6 @@ class ModelType(str, Enum):
     MLP = "mlp"
 
 
-@log_params
 def train_model(
     model_type: str | ModelType,
     X_train: pd.DataFrame,
@@ -137,7 +136,6 @@ def train_model(
     return model
 
 
-@log_metrics(["accuracy", "f1_weighted"])
 def evaluate_model(
     model: RandomForestClassifier | GradientBoostingClassifier | MLPClassifier,
     X_test: pd.DataFrame,
@@ -304,8 +302,12 @@ def run_experiment(
                     )
 
                 if log_artifacts:
-                    temp_plots_dir = tempfile.mkdtemp()
-                    plots_dir = Path(temp_plots_dir)
+                    from .config import PLOTS_DIR  # noqa: PLC0415
+
+                    # Создаем постоянную директорию для графиков
+                    PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+                    plots_dir = PLOTS_DIR
+
                     try:
                         if hasattr(model, "feature_importances_") and X_train is not None:
                             feature_plot_path = plots_dir / "feature_importances.png"
@@ -351,11 +353,8 @@ def run_experiment(
                                     "Correlation Heatmap",
                                     series="plots",
                                 )
-                    finally:
-                        try:
-                            shutil.rmtree(temp_plots_dir)
-                        except Exception:  # nosec B110
-                            pass
+                    except Exception as e:
+                        logger.warning(f"Ошибка при создании графиков для ClearML: {e}")
 
                 if clearml_task_context:
                     clearml_task_context.__exit__(None, None, None)
@@ -515,6 +514,20 @@ def run_experiment(
     if save_local:
         save_path = model_path or str(MODEL_PATH)
         save_model(model, save_path)
+
+    # Сохраняем модель как артефакт в ClearML (чтобы можно было скачать pkl файл)
+    if use_clearml and is_clearml_available() and save_local:
+        try:
+            final_model_path = model_path or str(MODEL_PATH)
+            # Сохраняем модель как артефакт для скачивания
+            log_artifact_to_clearml(
+                artifact_path=final_model_path,
+                artifact_name="model.pkl",
+                delete_after_upload=False,
+            )
+            logger.info(f"Модель сохранена как артефакт в ClearML: {final_model_path}")
+        except Exception as e:
+            logger.warning(f"Ошибка при сохранении модели как артефакта в ClearML: {e}")
 
     # Логируем модель в ClearML только если указано register_model_name
     # Если register_model_name=None, модель будет залогирована в пайплайне с версионированием

@@ -28,6 +28,9 @@ pydantic-settings = "^2.1.0"
 luigi = "^3.6.0"
 clearml = "^1.15.0"
 
+[tool.poetry.group.dev.dependencies]
+clearml-agent = "^2.0.6"
+
 [tool.mypy]
 python_version = "3.13"
 warn_unused_configs = true

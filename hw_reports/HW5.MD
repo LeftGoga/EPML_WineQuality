@@ -98,11 +98,7 @@ task_type: "training"
 auto_connect_frameworks: true
 auto_connect_streams: true
 ```
-
-![alt text](../pics/clearml_auth.png)
-
-
-
+![alt text](../pics/clearml_proj.png)
 ### d) Настроить аутентификацию
 
 Аутентификация настроена через фиксированных пользователей в docker-compose:
@@ -135,7 +131,7 @@ def log_params_to_clearml(params: dict[str, Any]) -> None:
         str_params = {k: str(v) for k, v in params.items()}
         task.connect(str_params)
 ```
-
+![alt text](../pics/clearml_log_params.png)
 **Логирование метрик:**
 ```python
 def log_metrics_to_clearml(metrics: dict[str, float | int]) -> None:
@@ -150,7 +146,7 @@ def log_metrics_to_clearml(metrics: dict[str, float | int]) -> None:
                 iteration=0,
             )
 ```
-
+![alt text](../pics/clearml_metrics.png)
 **Логирование графиков:**
 ```python
 def log_plot_to_clearml(plot_path: str | Path, title: str = "Plot") -> None:
@@ -162,7 +158,7 @@ def log_plot_to_clearml(plot_path: str | Path, title: str = "Plot") -> None:
         iteration=0,
     )
 ```
-
+![alt text](../pics/clearml_graphs.png)
 **Логирование артефактов:**
 ```python
 def log_artifact_to_clearml(artifact_path: str | Path, artifact_name: str | None = None) -> None:
@@ -172,9 +168,7 @@ def log_artifact_to_clearml(artifact_path: str | Path, artifact_name: str | None
         artifact_object=str(artifact_path),
     )
 ```
-
-Все функции автоматически интегрированы в `run_experiment()` в `src/wine_quality/model.py`.
-
+![alt text](../pics/clearmml_model_artifacts.png)
 ### b) Создать систему сравнения экспериментов
 
 Система сравнения реализована через функцию `compare_clearml_models()`:
@@ -197,8 +191,7 @@ def compare_clearml_models(
     }
 ```
 
-Функция сравнивает версии моделей по метрикам (accuracy, f1_weighted) и определяет лучшую версию. Также используется `Task.get_tasks()` для поиска всех экспериментов в проекте.
-
+![alt text](../pics/clearml_exp_compare.png)
 ### c) Настроить логирование метрик и параметров
 
 Логирование метрик и параметров интегрировано во все компоненты пайплайна:
@@ -253,7 +246,6 @@ def evaluate_model_component(...) -> str:
 - Анализ параметров
 - Просмотр артефактов и моделей
 
-![alt text](../pics/search.png)
 
 ---
 
@@ -289,7 +281,6 @@ def log_model_to_clearml(
 
     return model_version
 ```
-
 Функция `get_model_version_info()` ищет все версии модели в проекте и автоматически инкрементирует версию:
 
 ```python
