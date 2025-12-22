@@ -27,7 +27,7 @@ except ImportError:
     sns = None
 
 
-def run_simple_experiment(  # noqa: PLR0912, PLR0915
+def run_clearml_experiment(  # noqa: PLR0912, PLR0915
     quality_threshold: int = 7,
     test_size: float = 0.2,
     random_state: int = 42,
@@ -87,8 +87,8 @@ def run_simple_experiment(  # noqa: PLR0912, PLR0915
 
     full_task_name = None
     try:
-        model_name_display = model_type.replace("_", " ").title()
-        task_name_parts = [f"Wine Quality - {model_name_display}"]
+        # Формируем название модели в формате CamelCase
+        model_name_display = model_type.replace("_", "").title()
 
         params_list = []
         if model_type == "boosting":
@@ -110,14 +110,17 @@ def run_simple_experiment(  # noqa: PLR0912, PLR0915
             if mlp_max_iter:
                 params_list.append(f"max_iter={mlp_max_iter}")
 
+        # Формируем название в формате WineQuality_НазваниеМодели_[параметры]
         if params_list:
-            params_str = ", ".join(params_list)
-            task_name_parts.append(f"[{params_str}]")
+            params_str = "_".join(params_list)
+            full_task_name = f"WineQuality_{model_name_display}_[{params_str}]"
+        else:
+            full_task_name = f"WineQuality_{model_name_display}"
 
+        # Если указано experiment_name, добавляем его в конец
         if experiment_name:
-            task_name_parts.append(f"({experiment_name})")
+            full_task_name = f"{full_task_name}_{experiment_name}"
 
-        full_task_name = " | ".join(task_name_parts)
         if len(full_task_name) > 200:
             full_task_name = full_task_name[:197] + "..."
 
@@ -201,7 +204,7 @@ def run_simple_experiment(  # noqa: PLR0912, PLR0915
                     model_name=model_name,
                     model_path=model_file_path,
                     framework="scikit-learn",
-                    tags=[model_type, "wine_quality", "simple_experiment"],
+                    tags=[model_type, "wine_quality"],
                     labels={
                         "model_type": model_type,
                         "accuracy": str(metrics.get("accuracy", 0)),
@@ -218,18 +221,8 @@ def run_simple_experiment(  # noqa: PLR0912, PLR0915
             logger.warning(f"Не удалось зарегистрировать модель: {e}")
 
         metrics = result["metrics"]
-        task.logger.report_scalar(
-            title="Final Metrics",
-            series="accuracy",
-            value=float(metrics.get("accuracy", 0)),
-            iteration=0,
-        )
-        task.logger.report_scalar(
-            title="Final Metrics",
-            series="f1_weighted",
-            value=float(metrics.get("f1_weighted", 0)),
-            iteration=0,
-        )
+        # Метрики уже логируются в model.py через log_metrics_to_clearml,
+        # поэтому не дублируем их здесь
 
         params_dict = {
             "model_type": model_type,

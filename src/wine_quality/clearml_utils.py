@@ -74,9 +74,6 @@ def log_metrics_to_clearml(metrics: dict[str, float | int], iteration: int = 0) 
         return
 
     try:
-        # Подготавливаем метрики для логирования через connect (отображаются в UI)
-        metrics_for_connect = {}
-
         for metric_name, metric_value in metrics.items():
             if isinstance(metric_value, (int, float)):
                 float_value = float(metric_value)
@@ -100,14 +97,6 @@ def log_metrics_to_clearml(metrics: dict[str, float | int], iteration: int = 0) 
                 except Exception:  # nosec B110
                     # Если метод не поддерживается, просто пропускаем
                     pass
-
-                # Сохраняем для логирования через connect
-                metrics_for_connect[f"metrics/{metric_name}"] = float_value
-                metrics_for_connect[metric_name] = float_value
-
-        # Логируем метрики через connect для отображения в UI задачи
-        if metrics_for_connect:
-            task.connect(metrics_for_connect)
 
         logger.info(f"Метрики логированы в ClearML Scalars: {list(metrics.keys())}")
     except Exception as e:

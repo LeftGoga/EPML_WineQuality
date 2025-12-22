@@ -12,12 +12,12 @@ load_dotenv()
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from wine_quality.clearml_experiment import run_simple_experiment  # noqa: E402
+from wine_quality.clearml_experiment import run_clearml_experiment  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Запуск простого ClearML эксперимента для обучения моделей Wine Quality (все в одной таске)",
+        description="Запуск ClearML эксперимента для обучения моделей Wine Quality (все в одной таске)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Примеры использования:
@@ -135,7 +135,7 @@ def get_default_experiment_name(model_type: str) -> str:
         "random_forest": "Random Forest",
         "mlp": "MLP",
     }
-    return f"Wine Quality - {model_names.get(model_type, model_type.title())} (Simple Experiment)"
+    return f"Wine Quality - {model_names.get(model_type, model_type.title())}"
 
 
 if __name__ == "__main__":
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         tuple(args.mlp_hidden_layer_sizes) if args.mlp_hidden_layer_sizes else None
     )
 
-    result = run_simple_experiment(
+    result = run_clearml_experiment(
         quality_threshold=args.quality_threshold,
         test_size=args.test_size,
         random_state=args.random_state,
