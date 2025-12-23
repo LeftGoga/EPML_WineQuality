@@ -1,0 +1,82 @@
+site_name: Wine Quality ML Project
+site_description: Документация проекта по предсказанию качества вина
+site_author: Egor Polyakov
+site_url: https://leftgoga.github.io/wine_quality_epml/
+
+repo_name: wine_quality_epml
+repo_url: https://github.com/LeftGoga/wine_quality_epml
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: ru
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Переключить на темную тему
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Переключить на светлую тему
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.annotate
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Главная: index.md
+  - Быстрый старт: quickstart.md
+  - Установка: installation.md
+  - Руководство по развертыванию: deployment.md
+  - Примеры использования: examples.md
+  - API документация:
+    - Обзор: api/index.md
+    - Модули:
+      - data: api/data.md
+      - features: api/features.md
+      - model: api/model.md
+      - config: api/config.md
+      - ClearML: api/clearml.md
+  - Отчеты об экспериментах: experiments/index.md
+  - Архитектура: architecture.md
+
+plugins:
+  - search
+  - autorefs:
+      link_titles: auto
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            docstring_options:
+              ignore_init_summary: true

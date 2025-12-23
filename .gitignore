@@ -139,3 +139,8 @@ artifacts/
 
 # Models JSON reports
 models/*.json
+
+# =========================
+# Documentation
+# =========================
+site/
