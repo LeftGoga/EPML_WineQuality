@@ -68,11 +68,11 @@ nav:
   - Отчеты об экспериментах: experiments/index.md
   - Архитектура: architecture.md
   - Домашние задания:
-    - Домашнее задание 1: HW1.MD
-    - Домашнее задание 2: HW2.MD
-    - Домашнее задание 3: HW3.MD
-    - Домашнее задание 4: HW4.MD
-    - Домашнее задание 5: HW5.MD
+    - Домашнее задание 1: homework/hw1.md
+    - Домашнее задание 2: homework/hw2.md
+    - Домашнее задание 3: homework/hw3.md
+    - Домашнее задание 4: homework/hw4.md
+    - Домашнее задание 5: homework/hw5.md
 
 plugins:
   - search
