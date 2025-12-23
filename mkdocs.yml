@@ -5,7 +5,7 @@ site_url: https://leftgoga.github.io/wine_quality_epml/
 
 repo_name: wine_quality_epml
 repo_url: https://github.com/LeftGoga/wine_quality_epml
-edit_uri: edit/main/docs/
+edit_uri: edit/master/docs/
 
 theme:
   name: material
