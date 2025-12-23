@@ -2,16 +2,12 @@ name: Deploy Documentation
 
 on:
   push:
-    branches:
-      - master
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
       - 'experiment_report.md'
   pull_request:
-    branches:
-      - master
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
@@ -74,6 +70,7 @@ jobs:
           path: ./site
 
   deploy:
+    if: github.event_name == 'push'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
