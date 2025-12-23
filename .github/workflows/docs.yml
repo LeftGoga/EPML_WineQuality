@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - features/hw6
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
