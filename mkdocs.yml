@@ -76,7 +76,7 @@ nav:
     - Домашнее задание 3: homework/hw3.md
     - Домашнее задание 4: homework/hw4.md
     - Домашнее задание 5: homework/hw5.md
-    - Домашнее задание 6: HW6.MD
+    - Домашнее задание 6: homework/hw6.md
 
 plugins:
   - search
