@@ -23,6 +23,7 @@ pip-log.txt
 *.png
 !pics/
 !pics/*.png
+!docs/pics/*.png
 *.jpg
 
 

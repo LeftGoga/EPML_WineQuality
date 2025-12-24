@@ -1,6 +1,6 @@
 # Отчет об эксперименте: WineQuality_Boosting_[n_est=100_depth=2_lr=0.100]_Wine Quality - Boosting
 
-**Дата генерации:** 2025-12-24 02:28:16
+**Дата генерации:** 2025-12-25 01:04:37
 
 ## Основная информация
 
@@ -8,7 +8,7 @@
 - **Проект:** Wine Quality
 - **Статус:** completed
 - **Создано:** 2025-12-22T17:53:55.681000+00:00
-- **Завершено:** 2025-12-23T18:47:12.623000+00:00
+- **Завершено:** 2025-12-24T16:42:48.448000+00:00
 - **Теги:** framework:sklearn, model_type:boosting, task:classification, wine_quality
 
 ## Параметры эксперимента
@@ -51,10 +51,10 @@
 
 ### Сравнительная таблица метрик
 
-| Эксперимент | Metrics/accuracy | Metrics/f1_weighted | count | first_value | first_value_iteration | max_value | max_value_iteration | mean_value | min_value | min_value_iteration | value |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| WineQuality_Boosting_[n_est=100_depth=2_lr=0.100]_ | 0.8969 | 0.8801 | 2.0000 | 0.8969 | 0.0000 | 0.8969 | 0.0000 | 0.9000 | 0.8969 | 0.0000 | 0.8969 |
-| WineQuality_Randomforest_Wine Quality - Random For | 0.9375 | 0.9331 | 1.0000 | 0.9375 | 0.0000 | 0.9375 | 0.0000 | 0.9400 | 0.9375 | 0.0000 | 0.9375 |
+| Эксперимент | Metrics/accuracy | Metrics/f1_weighted |
+|---|---|---|
+| WineQuality_Boosting_[n_est=100_depth=2_lr=0.10... | 0.8969 | 0.8801 |
+| WineQuality_Randomforest_Wine Quality - Random ... | 0.9375 | 0.9331 |
 
 ### График сравнения метрик
 
@@ -62,8 +62,12 @@
 
 ## Визуализации
 
->![метрики](./pics/report_rf_graph1.png)
->![метрики](./pics/report_rf_graph2.png)
+### Графики основного эксперимента
 
->![метрики](./pics/report_boost_graph1.png)
->![метрики](./pics/report_boost_graph2.png)
+>![метрики](./pics/Важность_признаков__Boosting_.png)
+>![метрики](./pics/Матрица_корреляций.png)
+
+### Графики эксперимента: WineQuality_Randomforest_Wine Quality - Random ...
+
+>![метрики](./pics/WineQuality_Randomforest_Wine__Важность_признаков__Random_Forest_.png)
+>![метрики](./pics/WineQuality_Randomforest_Wine__Матрица_корреляций.png)
