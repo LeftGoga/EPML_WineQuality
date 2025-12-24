@@ -59,7 +59,6 @@ nav:
     - Руководство по развертыванию: deployment.md
     - Примеры использования: examples.md
     - Архитектура: architecture.md
-    - Отчеты об экспериментах: experiments/index.md
     - API документация:
       - Обзор: api/index.md
       - Модули:
@@ -68,6 +67,9 @@ nav:
         - model: api/model.md
         - config: api/config.md
         - ClearML: api/clearml.md
+  - Отчеты по экспериментам:
+    - Обзор: experiments/index.md
+    - Последний отчет: experiment_report.md
   - Домашние задания:
     - Домашнее задание 1: homework/hw1.md
     - Домашнее задание 2: homework/hw2.md
