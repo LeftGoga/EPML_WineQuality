@@ -1,0 +1,147 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+# Исключаем conf/env/ из игнорирования
+!conf/env/
+pip-wheel-metadata/
+pip-log.txt
+
+*.png
+!pics/
+!pics/*.png
+!docs/pics/*.png
+*.jpg
+
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_convert/
+.jupyter/
+
+# VSCode / PyCharm
+.vscode/
+.idea/
+
+# =========================
+# ML & Data
+# =========================
+# Datasetы
+*.db
+data/
+# Исключаем conf/data/ из игнорирования
+!conf/data/
+datasets/
+*.csv
+*.tsv
+*.zip
+*.rar
+*.7z
+*.tar
+*.tar.gz
+
+# Large binaries
+*.h5
+*.hdf5
+*.npy
+*.npz
+*.pkl
+*.joblib
+
+# Model files
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.pb
+*.tflite
+
+# Checkpoints
+checkpoints/
+outputs/
+runs/
+logs/
+wandb/
+mlruns/
+
+# TensorBoard
+tb_logs/
+tensorboard/
+
+# =========================
+# DVC
+# =========================
+# Cache & temp
+.dvc/tmp/
+.dvc/cache/
+
+# локальные данные (если ты не хочешь синхронизировать)
+# !.dvc/*.dvc  # оставить сами .dvc-файлы
+
+# =========================
+# Docker
+# =========================
+docker-data/
+*.pid
+
+# =========================
+# OS Files
+# =========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Linux
+*~
+
+# =========================
+# Environment & Secrets
+# =========================
+.env
+.env.*
+*.env
+config.yaml
+# Исключаем conf/config.yaml из игнорирования
+!conf/config.yaml
+secrets.yaml
+*.pem
+*.key
+*.credential
+
+# =========================
+# Project Specific
+# =========================
+tmp/
+cache/
+saved/
+artifacts/
+.pyc
+/data
+.cursorignore
+
+# Models JSON reports
+models/*.json
+
+# =========================
+# Documentation
+# =========================
+site/

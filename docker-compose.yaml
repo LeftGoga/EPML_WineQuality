@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mlflow_postgres
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - mlflow_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlflow_server
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://mlflow:mlflow@postgres:5432/mlflow
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+      --app-name basic-auth
+      --allowed-hosts *
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+      - ./basic_auth.ini:/mlflow/basic_auth.ini
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow@postgres:5432/mlflow
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+      - MLFLOW_FLASK_SERVER_SECRET_KEY=your_super_secret_key
+      - MLFLOW_AUTH_CONFIG_PATH=/mlflow/basic_auth.ini
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  wine-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wine_quality_app_v2
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - C:/dvc-storage:/dvc-storage
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_TRACKING_USERNAME=admin
+      - MLFLOW_TRACKING_PASSWORD=password1234567890
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: unless-stopped
+
+
+volumes:
+  mlflow_postgres_data:
+  mlflow_artifacts:

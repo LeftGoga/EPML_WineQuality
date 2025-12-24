@@ -1,0 +1,48 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.6
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        stages: [pre-commit]
+      - id: ruff-format
+        stages: [pre-commit]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.2
+    hooks:
+      - id: mypy
+        stages: [pre-commit]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+        stages: [pre-commit]
+      - id: trailing-whitespace
+        stages: [pre-commit]
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.1
+    hooks:
+      - id: bandit
+        files: ^src/wine_quality/
+        stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      - id: dvc-auto-commit
+        name: DVC auto-commit
+        entry: bash -c 'dvc_status=$(dvc status 2>&1); if echo "$dvc_status" | grep -q "changed"; then echo "Обнаружены изменения в данных DVC. Создание новой версии..."; dvc commit -f; echo "Версия DVC создана автоматически."; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [post-commit]
+      - id: generate-experiment-report
+        name: Generate experiment report from latest experiments
+        entry: bash -c 'poetry run python -m wine_quality.generate_experiment_report --latest 2 --timeout 20 --output docs/experiment_report.md 2>&1 || echo "⚠️ Не удалось сгенерировать отчет (таймаут или ClearML недоступен), продолжаем коммит..."'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+        files: ^(src/|docs/|conf/|\.github/)

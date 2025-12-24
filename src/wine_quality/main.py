@@ -1,0 +1,237 @@
+import os
+
+import hydra
+import mlflow
+from config import BASE_DIR
+from config_schema import AppConfig
+from dotenv import load_dotenv
+from features import engineer_features, scale_features
+from mlflow.tracking import MlflowClient
+from mlflow_context import MLflowTrackingContext
+from mlflow_utils import (
+    compare_runs,
+    export_runs_to_csv,
+    get_best_runs,
+    get_experiment_summary,
+    search_runs,
+)
+from model import ModelType, run_experiment
+from omegaconf import DictConfig, OmegaConf
+from utils import plot_correlation_heatmap, plot_feature_importances, plot_quality_distribution
+
+from data import create_target, get_features_and_target, load_data, split_data
+
+load_dotenv()
+
+
+@hydra.main(
+    config_path=str(BASE_DIR / "conf"),
+    config_name="config",
+)
+def main(cfg: DictConfig) -> None:
+    env_cfg = OmegaConf.select(cfg, "env", default=None)
+    if env_cfg is not None:
+        env_dict = OmegaConf.to_container(env_cfg, resolve=True)
+        if isinstance(env_dict, dict):
+            for key, value in env_dict.items():
+                if hasattr(cfg, key):
+                    cfg[key] = value
+            print("Применены настройки окружения")
+
+    try:
+        cfg_dict = OmegaConf.to_container(cfg, resolve=True)
+
+        if "env" in cfg_dict and cfg_dict["env"] is None:
+            del cfg_dict["env"]
+        validated_cfg = AppConfig(**cfg_dict)
+        print("✓ Конфигурация успешно валидирована с помощью Pydantic")
+
+        if not validated_cfg.model_completeness():
+            print("Предупреждение: конфигурация модели может быть неполной")
+    except Exception as e:
+        print(f"Ошибка валидации конфигурации: {e}")
+        raise
+
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
+    username = os.getenv("MLFLOW_TRACKING_USERNAME")
+    password = os.getenv("MLFLOW_TRACKING_PASSWORD")
+
+    with MLflowTrackingContext(tracking_uri=tracking_uri, username=username, password=password):
+        if not cfg.no_mlflow:
+            try:
+                mlflow.search_experiments(max_results=1)
+                print(f"Подключение к MLflow успешно: {tracking_uri}")
+                if username:
+                    print(f"  Используется аутентификация: {username}")
+            except Exception as e:
+                print(f"Предупреждение: не удалось подключиться к MLflow: {e}")
+                print(f"  Tracking URI: {tracking_uri}")
+                print("  Продолжаем без логирования в MLflow...")
+
+        df = load_data()
+        print(df.head())
+        plot_quality_distribution(df)
+        df = create_target(df, threshold=cfg.data.quality_threshold)
+        df = engineer_features(df)
+
+        X, y = get_features_and_target(df)
+
+        X_train, X_test, y_train, y_test = split_data(
+            X, y, test_size=cfg.data.test_size, random_state=cfg.random_state
+        )
+        X_train_sc, X_test_sc, _scaler = scale_features(X_train, X_test)
+        model_type = ModelType(cfg.model_type)
+
+        experiment_name = (
+            cfg.experiment_name if cfg.experiment_name is not None else cfg.mlflow.experiment_name
+        )
+        register_model_name = (
+            cfg.register_model_name
+            if cfg.register_model_name is not None
+            else f"Wine{model_type.value.title()}"
+        )
+
+        rf_n_estimators = None
+        rf_max_depth = None
+        boosting_n_estimators = None
+        boosting_max_depth = None
+        boosting_learning_rate = None
+        mlp_hidden_layer_sizes = None
+        mlp_max_iter = None
+
+        if model_type == ModelType.RANDOM_FOREST:
+            rf_n_estimators = OmegaConf.select(cfg.model, "n_estimators", default=None)
+            rf_max_depth = OmegaConf.select(cfg.model, "max_depth", default=None)
+        elif model_type == ModelType.BOOSTING:
+            boosting_n_estimators = OmegaConf.select(cfg.model, "n_estimators", default=None)
+            boosting_max_depth = OmegaConf.select(cfg.model, "max_depth", default=None)
+            boosting_learning_rate = OmegaConf.select(cfg.model, "learning_rate", default=None)
+        elif model_type == ModelType.MLP:
+            hidden_sizes = OmegaConf.select(cfg.model, "hidden_layer_sizes", default=None)
+            if hidden_sizes is not None:
+                mlp_hidden_layer_sizes = tuple(hidden_sizes)
+            mlp_max_iter = OmegaConf.select(cfg.model, "max_iter", default=None)
+
+        res = run_experiment(
+            X_train_sc,
+            y_train,
+            X_test=X_test_sc,
+            y_test=y_test,
+            model_type=model_type,
+            rf_n_estimators=rf_n_estimators,
+            rf_max_depth=rf_max_depth,
+            boosting_n_estimators=boosting_n_estimators,
+            boosting_max_depth=boosting_max_depth,
+            boosting_learning_rate=boosting_learning_rate,
+            mlp_hidden_layer_sizes=mlp_hidden_layer_sizes,
+            mlp_max_iter=mlp_max_iter,
+            random_state=cfg.random_state,
+            use_mlflow=not cfg.no_mlflow,
+            experiment_name=experiment_name,
+            model_artifact_path=cfg.mlflow.model_artifact_path,
+            save_local=not cfg.no_save,
+            register_model_name=register_model_name,
+            log_artifacts=cfg.mlflow.log_artifacts,
+            df_for_plots=df.drop(columns=["quality", "good_quality"], errors="ignore"),
+        )
+        client = MlflowClient()
+        try:
+            registered_models = client.search_registered_models()
+            print("All registered models:")
+            for model in registered_models:
+                print(f"- {model.name}")
+
+            versions = client.search_model_versions("name='WineRF'")
+            print("Versions for WineRF:")
+            for v in versions:
+                print(
+                    f"Version: {v.version}, Stage: {v.current_stage}, Run ID: {v.run_id}, Source: {v.source}, Status: {v.status}"
+                )
+
+            if not versions:
+                print("No versions found for WineRF—model not registered or registry query failed.")
+        except Exception as e:
+            print("Error querying registry:", str(e))
+
+        model = res["model"]
+        mlflow_run_id = res.get("mlflow_run_id")
+        if mlflow_run_id:
+            print(f"MLflow run id: {mlflow_run_id}")
+            try:
+                tracking_uri = mlflow.get_tracking_uri()
+                print(f"MLflow tracking URI: {tracking_uri}")
+            except Exception as exc:
+                print(f"Warning: could not get tracking URI: {exc}")
+
+        plot_correlation_heatmap(df.drop(columns=["quality", "good_quality"]))
+        plot_feature_importances(model, X.columns.tolist())
+
+        if cfg.analyze_experiments and mlflow_run_id:
+            print("\n" + "=" * 80)
+            print("АНАЛИЗ ЭКСПЕРИМЕНТОВ")
+            print("=" * 80)
+
+            try:
+                experiment = mlflow.get_experiment_by_name(experiment_name)
+                if experiment:
+                    summary = get_experiment_summary(experiment.experiment_id)
+                    print(f"\nСводка по эксперименту '{experiment_name}':")
+                    print(f"  Всего runs: {summary['total_runs']}")
+                    print(f"  Завершённых: {summary['finished_runs']}")
+                    print(f"  Неудачных: {summary['failed_runs']}")
+
+                    if summary["metrics_summary"]:
+                        print("\n  Статистика по метрикам:")
+                        for metric_name, stats in summary["metrics_summary"].items():
+                            print(
+                                f"    {metric_name}: "
+                                f"mean={stats['mean']:.4f}, "
+                                f"min={stats['min']:.4f}, "
+                                f"max={stats['max']:.4f}, "
+                                f"std={stats['std']:.4f}"
+                            )
+
+                runs = search_runs(
+                    experiment_ids=[experiment.experiment_id] if experiment else None,
+                    filter_string="metrics.accuracy > 0.7",
+                    order_by=["metrics.accuracy DESC"],
+                    max_results=10,
+                )
+
+                if runs:
+                    print(f"\n  Найдено {len(runs)} runs с accuracy > 0.7")
+                    best_runs = get_best_runs(runs, "accuracy", ascending=False, top_k=5)
+                    print("\n  Топ-5 runs по accuracy:")
+                    for i, run in enumerate(best_runs, 1):
+                        acc = run.data.metrics.get("accuracy", "N/A")
+                        f1 = run.data.metrics.get("f1", "N/A")
+                        model_t = run.data.params.get("model_type", "N/A")
+                        print(
+                            f"    {i}. Run {run.info.run_id[:8]}...: "
+                            f"accuracy={acc:.4f}, f1={f1:.4f}, model={model_t}"
+                        )
+
+                    if cfg.export_comparison:
+                        compare_runs(
+                            runs[:10],
+                            metric_names=["accuracy", "f1"],
+                            param_names=["model_type", "n_estimators", "max_depth"],
+                        )
+                        export_runs_to_csv(
+                            runs[:10],
+                            cfg.export_comparison,
+                            metric_names=["accuracy", "f1"],
+                            param_names=["model_type", "n_estimators", "max_depth"],
+                        )
+                        print(
+                            f"\n  Сравнение экспериментов экспортировано в {cfg.export_comparison}"
+                        )
+
+            except Exception as e:
+                print(f"\n  Ошибка при анализе экспериментов: {e}")
+
+            print("=" * 80)
+
+
+if __name__ == "__main__":
+    main()
