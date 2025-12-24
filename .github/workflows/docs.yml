@@ -2,6 +2,10 @@ name: Deploy Documentation
 
 on:
   push:
+    branches:
+      - main
+      - master
+      - features/hw6
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
