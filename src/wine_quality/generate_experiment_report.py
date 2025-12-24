@@ -4,9 +4,11 @@
 import argparse
 import json
 import logging
+import os
 import sys
+import threading
 import urllib.request
-from datetime import datetime
+from datetime import MINYEAR, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -193,6 +195,99 @@ def get_task_data(task_id: str) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Ошибка при получении данных задачи {task_id}: {e}")
         raise
+
+
+def get_latest_experiments(
+    project_name: str = "Wine Quality",
+    max_results: int = 2,
+    task_filter: dict[str, Any] | None = None,
+    timeout: int | None = None,
+) -> list[str]:
+    """Получает ID последних экспериментов из ClearML проекта.
+
+    Args:
+        project_name: Имя проекта в ClearML
+        max_results: Максимальное количество экспериментов для получения
+        task_filter: Дополнительные фильтры для задач
+        timeout: Таймаут в секундах (None = без таймаута, работает только на Unix)
+
+    Returns:
+        Список ID задач (от новых к старым)
+    """
+    if not CLEARML_AVAILABLE:
+        logger.debug("ClearML не доступен, невозможно получить последние эксперименты")
+        return []
+
+    # Быстрая проверка доступности ClearML конфигурации
+    clearml_config = os.environ.get("CLEARML_CONFIG_FILE") or os.path.expanduser("~/.clearml.conf")
+    if not os.path.exists(clearml_config):
+        logger.debug("Конфигурация ClearML не найдена, пропускаем получение экспериментов")
+        return []
+
+    # Пробуем быстро получить задачи с ограничением
+    default_filter = {"status": ["completed", "failed", "stopped"]}
+    if task_filter:
+        default_filter.update(task_filter)
+
+    try:
+        # Получаем задачи из проекта с таймаутом через threading (работает на Windows)
+        if timeout:
+            tasks_result: list[Any] = []
+            exception_result: Exception | None = None
+
+            def get_tasks_thread() -> None:
+                nonlocal tasks_result, exception_result
+                try:
+                    try:
+                        tasks = Task.get_tasks(
+                            project_name=project_name, task_filter=default_filter
+                        )
+                    except (TypeError, ValueError):
+                        tasks = Task.get_tasks(project_name=project_name)
+                    tasks_result = list(tasks)
+                except Exception as e:
+                    exception_result = e
+
+            thread = threading.Thread(target=get_tasks_thread, daemon=True)
+            thread.start()
+            thread.join(timeout=timeout)
+
+            if thread.is_alive() or exception_result:
+                if thread.is_alive():
+                    logger.warning(f"Превышен таймаут ({timeout}с) при получении экспериментов")
+                if exception_result:
+                    logger.debug(f"Ошибка при получении задач: {exception_result}")
+                return []
+            tasks = tasks_result
+        else:
+            # Без таймаута
+            try:
+                tasks = Task.get_tasks(project_name=project_name, task_filter=default_filter)
+            except (TypeError, ValueError):
+                tasks = Task.get_tasks(project_name=project_name)
+
+        # Сортируем по дате создания (от новых к старым)
+        try:
+            tasks_list = list(tasks)
+            # Сортируем по дате создания, если доступна
+            tasks_list.sort(
+                key=lambda t: (
+                    t.data.created
+                    if hasattr(t, "data") and hasattr(t.data, "created") and t.data.created
+                    else datetime(MINYEAR, 1, 1)
+                ),
+                reverse=True,
+            )
+            task_ids = [task.id for task in tasks_list[:max_results]]
+        except Exception:
+            # Если сортировка не удалась, просто берем первые N
+            task_ids = [task.id for task in list(tasks)[:max_results]]
+
+        logger.info(f"Найдено {len(task_ids)} последних экспериментов в проекте '{project_name}'")
+        return task_ids
+    except Exception as e:
+        logger.warning(f"Не удалось получить последние эксперименты: {e}")
+        return []
 
 
 def get_comparison_data(
@@ -688,12 +783,54 @@ def main() -> None:  # noqa: PLR0912, PLR0915
     parser.add_argument(
         "--output", type=str, default="experiment_report.md", help="Путь для сохранения отчета"
     )
-    parser.add_argument("--project", type=str, help="Имя проекта для фильтрации задач")
+    parser.add_argument(
+        "--project", type=str, default="Wine Quality", help="Имя проекта для фильтрации задач"
+    )
+    parser.add_argument(
+        "--latest",
+        type=int,
+        metavar="N",
+        help="Автоматически использовать последние N экспериментов для сравнения",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help="Таймаут в секундах для получения экспериментов (по умолчанию без таймаута)",
+    )
 
     args = parser.parse_args()
 
+    # Если указан --latest, получаем последние эксперименты
+    if args.latest:
+        try:
+            latest_task_ids = get_latest_experiments(
+                project_name=args.project,
+                max_results=args.latest,
+                timeout=args.timeout,
+            )
+            if not latest_task_ids:
+                logger.warning(
+                    "Не удалось получить последние эксперименты, пропускаем генерацию отчета"
+                )
+                sys.exit(0)  # Не блокируем коммит
+        except (KeyboardInterrupt, TimeoutError) as e:
+            logger.warning(f"Прервано при получении экспериментов: {e}")
+            sys.exit(0)  # Не блокируем коммит
+        except Exception as e:
+            logger.warning(f"Ошибка при получении последних экспериментов: {e}")
+            sys.exit(0)  # Не блокируем коммит при ошибках
+        if len(latest_task_ids) == 1:
+            args.task_id = latest_task_ids[0]
+        else:
+            args.task_id = latest_task_ids[0]
+            args.comparison = latest_task_ids[1:]
+        logger.info(
+            f"Используются последние {len(latest_task_ids)} экспериментов: {latest_task_ids}"
+        )
+
     if not args.task_id and not args.comparison:
-        parser.error("Необходимо указать --task-id или --comparison")
+        parser.error("Необходимо указать --task-id, --comparison или --latest")
 
     try:
         if args.task_id:
@@ -713,6 +850,9 @@ def main() -> None:  # noqa: PLR0912, PLR0915
 
         if not task_data:
             logger.error("Не удалось получить данные задачи")
+            # В режиме --latest не блокируем коммит
+            if args.latest:
+                sys.exit(0)
             sys.exit(1)
 
         pics_dir = output_dir / "pics"
@@ -762,8 +902,14 @@ def main() -> None:  # noqa: PLR0912, PLR0915
         logger.info(f"Отчет сохранен: {output_path}")
         logger.info(f"Размер отчета: {len(report)} символов")
 
+    except KeyboardInterrupt:
+        logger.warning("Генерация отчета прервана пользователем")
+        sys.exit(0)  # Не блокируем коммит
     except Exception as e:
         logger.error(f"Ошибка при генерации отчета: {e}")
+        # В режиме --latest не блокируем коммит при ошибках
+        if args.latest:
+            sys.exit(0)
         sys.exit(1)
 
 

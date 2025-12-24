@@ -38,3 +38,11 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [post-commit]
+      - id: generate-experiment-report
+        name: Generate experiment report from latest experiments
+        entry: bash -c 'poetry run python -m wine_quality.generate_experiment_report --latest 2 --timeout 20 --output docs/experiment_report.md 2>&1 || echo "⚠️ Не удалось сгенерировать отчет (таймаут или ClearML недоступен), продолжаем коммит..."'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+        files: ^(src/|docs/|conf/|\.github/)

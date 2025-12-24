@@ -1,4 +1,4 @@
-.PHONY: all install run train train-rf train-mlp train-boosting train-no-mlflow train-analyze train-data-small train-data-large train-data-strict train-data-lenient train-dev train-prod train-test train-dev-rf train-prod-boosting lint format bandit clean reinstall prepare features streamlit docs docs-serve docs-build report report-comparison mlflow luigi luigi-rf luigi-boosting luigi-mlp luigi-no-mlflow luigi-fresh luigi-direct luigi-visualizer luigi-clean
+.PHONY: all install run train train-rf train-mlp train-boosting train-no-mlflow train-analyze train-data-small train-data-large train-data-strict train-data-lenient train-dev train-prod train-test train-dev-rf train-prod-boosting lint format bandit clean reinstall prepare features streamlit docs docs-serve docs-build report report-comparison report-latest mlflow luigi luigi-rf luigi-boosting luigi-mlp luigi-no-mlflow luigi-fresh luigi-direct luigi-visualizer luigi-clean
 
 all: install run
 
@@ -29,6 +29,7 @@ help:
 	@echo "  make docs-build        - Собрать документацию для публикации"
 	@echo "  make report            - Создать отчет об эксперименте (TASK_ID=xxx)"
 	@echo "  make report-comparison  - Создать отчет со сравнением (TASK_ID=xxx COMPARISON=id1 id2)"
+	@echo "  make report-latest      - Создать отчет по последним двум экспериментам"
 	@echo "  make mlflow            - Запустить MLflow сервер"
 	@echo "  make luigi             - Запустить Luigi pipeline"
 	@echo "  make luigi-rf          - Запустить Luigi pipeline с RF"
@@ -132,6 +133,10 @@ report-comparison:
 	else \
 		poetry run python -m wine_quality.generate_experiment_report --comparison $(COMPARISON) --output docs/experiment_report.md; \
 	fi
+
+report-latest:
+	@echo "Создание отчета по последним двум экспериментам"
+	poetry run python -m wine_quality.generate_experiment_report --latest 2 --output docs/experiment_report.md
 
 mlflow:
 	mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./artifacts --host 127.0.0.1 --port 5000

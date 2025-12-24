@@ -1,6 +1,6 @@
 # Отчет об эксперименте: WineQuality_Boosting_[n_est=100_depth=2_lr=0.100]_Wine Quality - Boosting
 
-**Дата генерации:** 2025-12-25 01:04:37
+**Дата генерации:** 2025-12-25 02:05:25
 
 ## Основная информация
 
@@ -54,7 +54,7 @@
 | Эксперимент | Metrics/accuracy | Metrics/f1_weighted |
 |---|---|---|
 | WineQuality_Boosting_[n_est=100_depth=2_lr=0.10... | 0.8969 | 0.8801 |
-| WineQuality_Randomforest_Wine Quality - Random ... | 0.9375 | 0.9331 |
+| WineQuality_Boosting_[n_est=100_depth=2_lr=0.10... | 0.8969 | 0.8801 |
 
 ### График сравнения метрик
 
@@ -67,7 +67,7 @@
 >![метрики](./pics/Важность_признаков__Boosting_.png)
 >![метрики](./pics/Матрица_корреляций.png)
 
-### Графики эксперимента: WineQuality_Randomforest_Wine Quality - Random ...
+### Графики эксперимента: WineQuality_Boosting_[n_est=100_depth=2_lr=0.10...
 
->![метрики](./pics/WineQuality_Randomforest_Wine__Важность_признаков__Random_Forest_.png)
->![метрики](./pics/WineQuality_Randomforest_Wine__Матрица_корреляций.png)
+>![метрики](./pics/WineQuality_Boosting__n_est_10_Важность_признаков__Boosting_.png)
+>![метрики](./pics/WineQuality_Boosting__n_est_10_Матрица_корреляций.png)
