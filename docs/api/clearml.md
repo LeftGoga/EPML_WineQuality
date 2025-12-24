@@ -8,163 +8,57 @@
 
 Контекстный менеджер для работы с задачами ClearML.
 
-#### `ClearMLTaskContext`
+::: wine_quality.clearml_context.ClearMLTaskContext
+    options:
+      show_source: true
+      heading_level: 3
 
-```python
-class ClearMLTaskContext:
-    def __init__(
-        self,
-        project_name: str,
-        task_name: str,
-        task_type: str = "training"
-    )
-```
-
-**Пример:**
-
-```python
-from wine_quality.clearml_context import ClearMLTaskContext
-
-with ClearMLTaskContext(
-    project_name="Wine Quality",
-    task_name="My Experiment"
-) as ctx:
-    task = ctx.task
-    # Ваш код
-```
+::: wine_quality.clearml_context.is_clearml_available
+    options:
+      show_source: true
+      heading_level: 3
 
 ### `clearml_utils`
 
 Утилиты для логирования в ClearML.
 
-#### `log_params_to_clearml`
+::: wine_quality.clearml_utils.log_params_to_clearml
+    options:
+      show_source: true
+      heading_level: 3
 
-Логирует параметры в ClearML.
+::: wine_quality.clearml_utils.log_metrics_to_clearml
+    options:
+      show_source: true
+      heading_level: 3
 
-```python
-def log_params_to_clearml(params: dict[str, Any]) -> None
-```
+::: wine_quality.clearml_utils.log_plot_to_clearml
+    options:
+      show_source: true
+      heading_level: 3
 
-#### `log_metrics_to_clearml`
+::: wine_quality.clearml_utils.log_artifact_to_clearml
+    options:
+      show_source: true
+      heading_level: 3
 
-Логирует метрики в ClearML.
-
-```python
-def log_metrics_to_clearml(
-    metrics: dict[str, float],
-    iteration: int = 0
-) -> None
-```
-
-#### `log_plot_to_clearml`
-
-Логирует графики в ClearML.
-
-```python
-def log_plot_to_clearml(
-    plot_path: str,
-    title: str = "Plot",
-    series: str = "default"
-) -> None
-```
-
-#### `log_artifact_to_clearml`
-
-Логирует артефакты в ClearML.
-
-```python
-def log_artifact_to_clearml(
-    artifact_path: str,
-    artifact_name: str
-) -> None
-```
-
-#### `log_model_to_clearml`
-
-Логирует модель в ClearML.
-
-```python
-def log_model_to_clearml(
-    model: Any,
-    model_name: str,
-    model_path: str,
-    framework: str = "scikit-learn"
-) -> None
-```
+::: wine_quality.clearml_utils.log_model_to_clearml
+    options:
+      show_source: true
+      heading_level: 3
 
 ### `clearml_model_registry`
 
 Регистрация и версионирование моделей.
 
-#### `register_model_with_version`
+::: wine_quality.clearml_model_registry.register_model_with_version
+    options:
+      show_source: true
+      heading_level: 3
 
-Регистрирует модель с автоматическим версионированием.
+## Примеры использования
 
-```python
-def register_model_with_version(
-    model: Any,
-    model_name: str,
-    model_path: str,
-    framework: str = "scikit-learn",
-    tags: list[str] | None = None,
-    labels: dict[str, str] | None = None,
-    auto_version: bool = True
-) -> dict[str, Any]
-```
-
-**Возвращает:**
-
-- `dict`: Информация о версии модели:
-  - `version`: Номер версии
-  - `model_id`: ID модели в ClearML
-
-**Пример:**
-
-```python
-from wine_quality.clearml_model_registry import register_model_with_version
-
-version_info = register_model_with_version(
-    model=trained_model,
-    model_name="wine_quality_boosting",
-    model_path="models/wine_boosting.pkl",
-    framework="scikit-learn",
-    tags=["boosting", "wine_quality"],
-    auto_version=True,
-)
-```
-
-### `clearml_pipeline`
-
-Пайплайны ClearML.
-
-#### `wine_quality_pipeline`
-
-Основной пайплайн для обучения модели.
-
-```python
-@PipelineDecorator.pipeline(
-    name="Wine Quality Training Pipeline",
-    project="Wine Quality",
-    version="1.0",
-)
-def wine_quality_pipeline(...) -> dict[str, Any]
-```
-
-**Пример:**
-
-```python
-from wine_quality.clearml_pipeline import wine_quality_pipeline
-from clearml import PipelineDecorator
-
-PipelineDecorator.run_locally()
-
-results = wine_quality_pipeline(
-    data_path="data/winequality-red.csv",
-    model_type="boosting",
-)
-```
-
-## Полный пример
+### Базовый пример
 
 ```python
 from wine_quality.clearml_context import ClearMLTaskContext

@@ -86,6 +86,14 @@ logger = logging.getLogger(__name__)
 
 
 class ModelType(str, Enum):
+    """Типы моделей машинного обучения.
+
+    Attributes:
+        RANDOM_FOREST: Random Forest классификатор.
+        BOOSTING: Gradient Boosting классификатор.
+        MLP: Multi-Layer Perceptron (нейронная сеть).
+    """
+
     RANDOM_FOREST = "random_forest"
     BOOSTING = "boosting"
     MLP = "mlp"
@@ -104,6 +112,38 @@ def train_model(
     mlp_max_iter: int | None = None,
     random_state: int | None = None,
 ) -> RandomForestClassifier | GradientBoostingClassifier | MLPClassifier:
+    """Обучает модель машинного обучения.
+
+    Поддерживает три типа моделей: Random Forest, Gradient Boosting и MLP.
+    Параметры модели берутся из аргументов или из конфигурации по умолчанию.
+
+    Args:
+        model_type: Тип модели (ModelType или строка).
+        X_train: Обучающие признаки.
+        y_train: Обучающая целевая переменная.
+        rf_n_estimators: Количество деревьев для Random Forest.
+        rf_max_depth: Максимальная глубина для Random Forest.
+        boosting_n_estimators: Количество деревьев для Boosting.
+        boosting_max_depth: Максимальная глубина для Boosting.
+        boosting_learning_rate: Скорость обучения для Boosting.
+        mlp_hidden_layer_sizes: Размеры скрытых слоев для MLP.
+        mlp_max_iter: Максимальное количество итераций для MLP.
+        random_state: Seed для воспроизводимости.
+
+    Returns:
+        Обученная модель (RandomForestClassifier, GradientBoostingClassifier или MLPClassifier).
+
+    Raises:
+        ValueError: Если указан неизвестный тип модели.
+
+    Example:
+        >>> model = train_model(
+        ...     ModelType.BOOSTING,
+        ...     X_train, y_train,
+        ...     boosting_n_estimators=100,
+        ...     boosting_max_depth=3
+        ... )
+    """
     if isinstance(model_type, str):
         model_type = ModelType(model_type.lower())
 
@@ -141,6 +181,23 @@ def evaluate_model(
     X_test: pd.DataFrame,
     y_test: pd.Series,
 ) -> dict[str, Any]:
+    """Оценивает модель на тестовых данных.
+
+    Вычисляет метрики качества: accuracy, F1-score (weighted),
+    а также сохраняет предсказания и confusion matrix.
+
+    Args:
+        model: Обученная модель для оценки.
+        X_test: Тестовые признаки.
+        y_test: Тестовая целевая переменная.
+
+    Returns:
+        dict: Словарь с метриками (accuracy, f1_weighted, y_pred, confusion_matrix).
+
+    Example:
+        >>> metrics = evaluate_model(model, X_test, y_test)
+        >>> print(f"Accuracy: {metrics['accuracy']:.4f}")
+    """
     y_pred = model.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     f1 = f1_score(y_test, y_pred, average="weighted")
@@ -159,6 +216,17 @@ def evaluate_model(
 
 
 def save_model(model: Any, path: str | None = None) -> None:
+    """Сохраняет модель в файл.
+
+    Сохраняет обученную модель с помощью joblib в указанный путь.
+
+    Args:
+        model: Модель для сохранения.
+        path: Путь для сохранения модели. Если None, используется путь из конфигурации.
+
+    Example:
+        >>> save_model(trained_model, "models/my_model.pkl")
+    """
     if path is None:
         path = str(MODEL_PATH)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -167,6 +235,20 @@ def save_model(model: Any, path: str | None = None) -> None:
 
 
 def load_model(path: str | None = None) -> Any:
+    """Загружает модель из файла.
+
+    Загружает сохраненную модель с помощью joblib.
+
+    Args:
+        path: Путь к файлу модели. Если None, используется путь из конфигурации.
+
+    Returns:
+        Загруженная модель.
+
+    Example:
+        >>> model = load_model("models/my_model.pkl")
+        >>> predictions = model.predict(X_test)
+    """
     if path is None:
         path = str(MODEL_PATH)
     return joblib.load(path)
@@ -197,6 +279,51 @@ def run_experiment(
     log_artifacts: bool = True,
     df_for_plots: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
+    """Запускает полный эксперимент: обучение, оценка и логирование.
+
+    Обучает модель, оценивает её на тестовых данных, логирует результаты
+    в MLflow и/или ClearML, сохраняет модель локально и в реестр моделей.
+
+    Args:
+        X_train: Обучающие признаки.
+        y_train: Обучающая целевая переменная.
+        X_test: Тестовые признаки.
+        y_test: Тестовая целевая переменная.
+        model_type: Тип модели (по умолчанию BOOSTING).
+        rf_n_estimators: Количество деревьев для Random Forest.
+        rf_max_depth: Максимальная глубина для Random Forest.
+        boosting_n_estimators: Количество деревьев для Boosting.
+        boosting_max_depth: Максимальная глубина для Boosting.
+        boosting_learning_rate: Скорость обучения для Boosting.
+        mlp_hidden_layer_sizes: Размеры скрытых слоев для MLP.
+        mlp_max_iter: Максимальное количество итераций для MLP.
+        random_state: Seed для воспроизводимости.
+        use_mlflow: Использовать MLflow для логирования.
+        use_clearml: Использовать ClearML для логирования.
+        experiment_name: Имя эксперимента.
+        clearml_project_name: Имя проекта в ClearML.
+        model_artifact_path: Путь для артефакта модели.
+        model_path: Локальный путь для сохранения модели.
+        save_local: Сохранять модель локально.
+        register_model_name: Имя модели для регистрации в реестре.
+        log_artifacts: Логировать артефакты (графики и т.д.).
+        df_for_plots: DataFrame для создания графиков.
+
+    Returns:
+        dict: Словарь с результатами (model, metrics, predictions, confusion_matrix, mlflow_run_id, clearml_task_id).
+
+    Raises:
+        RuntimeError: Если use_mlflow=True, но MLflow не установлен.
+
+    Example:
+        >>> result = run_experiment(
+        ...     X_train, y_train, X_test, y_test,
+        ...     model_type=ModelType.BOOSTING,
+        ...     boosting_n_estimators=100,
+        ...     use_clearml=True
+        ... )
+        >>> print(f"Accuracy: {result['metrics']['accuracy']:.4f}")
+    """
     if use_mlflow and not MLFLOW_AVAILABLE:
         raise RuntimeError("MLflow не установлен. Установите mlflow: pip install mlflow")
 
