@@ -52,21 +52,22 @@ markdown_extensions:
       permalink: true
 
 nav:
-  - Главная: index.md
-  - Быстрый старт: quickstart.md
-  - Установка: installation.md
-  - Руководство по развертыванию: deployment.md
-  - Примеры использования: examples.md
-  - API документация:
-    - Обзор: api/index.md
-    - Модули:
-      - data: api/data.md
-      - features: api/features.md
-      - model: api/model.md
-      - config: api/config.md
-      - ClearML: api/clearml.md
-  - Отчеты об экспериментах: experiments/index.md
-  - Архитектура: architecture.md
+  - Документация:
+    - Главная: index.md
+    - Быстрый старт: quickstart.md
+    - Установка: installation.md
+    - Руководство по развертыванию: deployment.md
+    - Примеры использования: examples.md
+    - Архитектура: architecture.md
+    - Отчеты об экспериментах: experiments/index.md
+    - API документация:
+      - Обзор: api/index.md
+      - Модули:
+        - data: api/data.md
+        - features: api/features.md
+        - model: api/model.md
+        - config: api/config.md
+        - ClearML: api/clearml.md
   - Домашние задания:
     - Домашнее задание 1: homework/hw1.md
     - Домашнее задание 2: homework/hw2.md
