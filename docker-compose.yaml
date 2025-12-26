@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  wine-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wine_quality_app_v2
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - C:/dvc-storage:/dvc-storage
+    restart: unless-stopped

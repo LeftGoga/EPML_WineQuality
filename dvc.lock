@@ -1,0 +1,40 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: make prepare
+    outs:
+    - path: data/winequality-red.csv
+      hash: md5
+      md5: 2daeecee174368f8a33b82c8cccae3a5
+      size: 84199
+  train:
+    cmd: make train
+    deps:
+    - path: data/features.csv
+      hash: md5
+      md5: 40209d4dfaaddba6b0cf3ddc0b525687
+      size: 141741
+    - path: src/wine_quality/main.py
+      hash: md5
+      md5: 229de988bf200f930ec128edf237cbf5
+      size: 4877
+  features:
+    cmd: make features
+    deps:
+    - path: data/winequality-red.csv
+      hash: md5
+      md5: 2daeecee174368f8a33b82c8cccae3a5
+      size: 84199
+    - path: src/wine_quality/data.py
+      hash: md5
+      md5: 1646eca15d0a8b57d0bd8816b5c87371
+      size: 3515
+    - path: src/wine_quality/features.py
+      hash: md5
+      md5: 626a6e871c8008e2918767ba316ee266
+      size: 1854
+    outs:
+    - path: data/features.csv
+      hash: md5
+      md5: 40209d4dfaaddba6b0cf3ddc0b525687
+      size: 141741
